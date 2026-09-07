@@ -1,0 +1,67 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client"
+  output   = "../lib/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// Enums
+
+enum ContextMode {
+  NORMAL
+  EXAM_REVISION
+  INTERVIEW_BASED
+}
+
+model User {
+  id        String   @id
+  email     String
+  firstName String?
+  lastName  String?
+  imageUrl  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Feature Realtions
+  studyChats StudyChat[]
+
+  @@map("user")
+}
+
+// Contextual Study Model
+
+model StudyChat {
+  id               String         @id @default(uuid())
+  user             User?          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId           String?
+  title            String
+  contextMode      ContextMode    @default(NORMAL)
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+  messages         StudyMessage[]
+  latestResponseId String?
+
+  @@unique([userId, id])
+  @@index([userId])
+  @@map("studychat")
+}
+
+model StudyMessage {
+  id        String      @id @default(cuid())
+  studyChat StudyChat?  @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  chatId    String
+  role      String // 'user'/'assistant'
+  content   String
+  modeUsed  ContextMode @default(NORMAL)
+  createdAt DateTime    @default(now())
+
+  @@index([chatId])
+  @@map("studymessage")
+}
