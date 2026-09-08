@@ -28,7 +28,7 @@ export async function GET(
       id: chatId,
     },
     include: {
-      messages: true,
+      messages: { orderBy: { createdAt: "asc" } },
     },
   });
 

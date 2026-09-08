@@ -87,9 +87,11 @@ export function ContextSelector() {
           className="flex flex-col items-center gap-3 text-center"
           role="status"
         >
-          <LoaderCircle className="size-7 animate-spin text-primary" />
-          <p className="text-lg font-semibold">Creating Your Chat</p>
-          <p className="text-sm text-muted-foreground">
+          <LoaderCircle className="size-7 animate-spin text-secondary" />
+          <p className="text-lg font-semibold text-secondary">
+            Creating Your Chat
+          </p>
+          <p className="text-sm text-secondary">
             Preparing your personalized study session...
           </p>
         </div>

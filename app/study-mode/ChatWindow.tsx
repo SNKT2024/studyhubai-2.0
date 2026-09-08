@@ -33,12 +33,14 @@ import {
 import { ContextMode } from "@/lib/generated/prisma/enums";
 import { Bot, LoaderCircle } from "lucide-react";
 import { FaArrowUp } from "react-icons/fa";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { Fragment, memo, useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
-
+import remarkGfm from "remark-gfm";
+import { Button } from "@/components/ui/button";
+import { toast, Toaster } from "@/components/ui/toast";
 type ChatMessage = {
   id: string;
   content: string;
@@ -100,7 +102,10 @@ const ChatMessageView = memo(function ChatMessageView({
           {isStreaming ? (
             <p className="whitespace-pre-wrap">{message.content}</p>
           ) : (
-            <ReactMarkdown components={markdownComponents}>
+            <ReactMarkdown
+              components={markdownComponents}
+              remarkPlugins={[remarkGfm]}
+            >
               {message.content}
             </ReactMarkdown>
           )}
@@ -108,6 +113,11 @@ const ChatMessageView = memo(function ChatMessageView({
       </Message>
     </MessageScrollerItem>
   );
+});
+
+toast.add({
+  title: "Error",
+  description: "Failed to message. Please try again.",
 });
 
 export function ChatWindow() {
@@ -121,6 +131,7 @@ export function ChatWindow() {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const viewportRef = useRef<HTMLDivElement>(null);
   const lastMessageLength = messages.at(-1)?.content.length ?? 0;
+  const router = useRouter();
 
   useEffect(() => {
     if (!userId || !chatId) return;
@@ -223,6 +234,10 @@ export function ChatWindow() {
       }
     } catch (error) {
       console.error("Something went wrong while sending the message:", error);
+      toast.add({
+        title: "Error",
+        description: "Failed to send message. Please try again.",
+      });
       setMessages((currentMessages) =>
         currentMessages.filter(
           (message) =>
@@ -246,10 +261,7 @@ export function ChatWindow() {
   if (isLoading) {
     return (
       <div className="flex min-h-[min(80vh,52rem)] w-full items-center justify-center rounded-xl border-primary bg-secondary">
-        <div
-          className="flex items-center gap-3 text-muted-foreground"
-          role="status"
-        >
+        <div className="flex items-center gap-3 text-primary" role="status">
           <LoaderCircle className="size-5 animate-spin" />
           <span>Loading your study chat...</span>
         </div>
@@ -259,18 +271,24 @@ export function ChatWindow() {
 
   if (loadError || !chat) {
     return (
-      <div className="flex min-h-[min(80vh,52rem)] w-full items-center justify-center rounded-xl border bg-card px-6 text-center text-muted-foreground">
+      <div className="flex flex-col min-h-[min(80vh,52rem)] w-full items-center justify-center rounded-xl   px-6 text-center bg-secondary text-primary gap-3">
         {loadError ?? "This chat could not be found."}
+        <Button
+          className="text-secondary p-4 cursor-pointer"
+          onClick={() => router.push(`/study-mode`)}
+        >
+          Try Again
+        </Button>
       </div>
     );
   }
 
   return (
     <MessageScrollerProvider>
-      <div className="flex w-150 flex-col gap-4">
+      <div className="w-full max-w-3xl mx-auto">
         <Card className="h-[min(80vh,52rem)] bg-secondary">
           <CardHeader className="items-center">
-            <CardTitle className="bg-primary font-normal rounded-lg border-primary w-fit px-3 py-1 text-secondary">
+            <CardTitle className="bg-primary uppercase font-normal rounded-lg border-primary w-fit px-3 py-1 text-secondary">
               {chat.title}
             </CardTitle>
             <CardAction className="bg-primary font-normal rounded-lg border-primary w-fit px-3 py-1 text-secondary">
@@ -344,7 +362,7 @@ export function ChatWindow() {
                   placeholder="Ask a study question..."
                   aria-label="Message"
                   disabled={isSending}
-                  className="placeholder:text-secondary text-secondary focus-visible:!border-transparent focus-visible:!ring-0"
+                  className="placeholder:text-secondary text-secondary"
                   style={{ boxShadow: "none", outline: "none" }}
                   rows={2}
                 />
