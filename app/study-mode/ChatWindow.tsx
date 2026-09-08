@@ -115,11 +115,6 @@ const ChatMessageView = memo(function ChatMessageView({
   );
 });
 
-toast.add({
-  title: "Error",
-  description: "Failed to message. Please try again.",
-});
-
 export function ChatWindow() {
   const { userId, chatId } = useParams<{ userId: string; chatId: string }>();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -320,11 +315,11 @@ export function ChatWindow() {
                           message.role === "assistant" && (
                             <MessageScrollerItem>
                               <Message aria-live="polite">
-                                <MessageContent className="flex w-fit flex-row items-center gap-2 rounded-xl bg-muted px-4 py-3 text-muted-foreground">
-                                  <Bot className="size-4" />
-                                  <span className="flex items-center gap-1">
+                                <MessageContent className="flex w-fit flex-row items-center gap-2 rounded-xl bg-muted px-4 py-3 bg-primary">
+                                  <Bot className="size-4 text-secondary" />
+                                  <span className="flex items-center gap-1 text-secondary">
                                     AI is thinking
-                                    <LoaderCircle className="size-4 animate-spin" />
+                                    <LoaderCircle className="size-4 animate-spin text-secondary" />
                                   </span>
                                 </MessageContent>
                               </Message>
