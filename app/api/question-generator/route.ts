@@ -2,21 +2,38 @@ import { ExperienceLevel, QuestionFormat } from "@/lib/generated/prisma/enums";
 import { generateQuestions } from "@/lib/llm/llmClient";
 import { prisma } from "@/lib/prisma";
 import { loadPrompt } from "@/lib/prompts/prompLoader";
+import z from "zod";
 
-type QuestionRequest = {
-  topic: string;
-  question_format: QuestionFormat;
-  experience: ExperienceLevel;
-  count: number;
-  includeAnswers: boolean;
-};
+const questionRequestSchema = z.object({
+  topic: z.string().trim().min(1),
+  question_format: z.enum([
+    QuestionFormat.MCQ,
+    QuestionFormat.SENTENCE_BASED,
+    QuestionFormat.INTERVIEW_BASED,
+  ]),
+  experience: z.enum([
+    ExperienceLevel.FRESHER_0_1,
+    ExperienceLevel.EXPERIENCED_3_PLUS,
+  ]),
+  count: z.number().int().min(1).max(10),
+  includeAnswers: z.boolean(),
+});
 // Create Question Set
 export async function POST(req: Request) {
   try {
     const userId = "123";
 
+    const parsedRequest = questionRequestSchema.safeParse(await req.json());
+
+    if (!parsedRequest.success) {
+      return Response.json(
+        { message: "Invalid question generation request" },
+        { status: 400 },
+      );
+    }
+
     const { topic, question_format, experience, count, includeAnswers } =
-      await req.json();
+      parsedRequest.data;
 
     const prompt = await loadPrompt("questiongenerator", {
       topic,

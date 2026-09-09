@@ -13,7 +13,7 @@ const geist = Geist({ subsets: ["latin"] });
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="en" suppressHydrationWarning className={geist.className}>
-      <body className="min-h-full flex flex-col">
+      <body className="min-h-screen flex flex-col">
         {children}
         <Toaster />
       </body>
