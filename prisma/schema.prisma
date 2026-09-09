@@ -20,6 +20,17 @@ enum ContextMode {
   INTERVIEW_BASED
 }
 
+enum QuestionFormat {
+  MCQ
+  SENTENCE_BASED
+  INTERVIEW_BASED
+}
+
+enum ExperienceLevel {
+  FRESHER_0_1
+  EXPERIENCED_3_PLUS
+}
+
 model User {
   id        String   @id
   email     String
@@ -30,7 +41,8 @@ model User {
   updatedAt DateTime @updatedAt
 
   // Feature Realtions
-  studyChats StudyChat[]
+  studyChats   StudyChat[]
+  questionSets QuestionSet[]
 
   @@map("user")
 }
@@ -64,4 +76,22 @@ model StudyMessage {
 
   @@index([chatId])
   @@map("studymessage")
+}
+
+// Question Genertor
+
+model QuestionSet {
+  id              String          @id @default(cuid())
+  user            User?           @relation(fields: [userId], references: [id])
+  userId          String?
+  topic           String
+  format          QuestionFormat
+  experienceLevel ExperienceLevel
+  count           Int             @default(10)
+  questions       Json
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  @@index([userId])
+  @@map("questionset")
 }

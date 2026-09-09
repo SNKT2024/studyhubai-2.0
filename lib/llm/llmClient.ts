@@ -1,6 +1,6 @@
-import { generateText, smoothStream, streamText } from "ai";
+import { generateObject, generateText, smoothStream, streamText } from "ai";
 import { createOpenAI } from "@ai-sdk/openai";
-
+import z from "zod";
 const AI_MODEL = process.env.AI_MODEL ?? "gpt-4o-mini";
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY ?? process.env.AI_API_KEY;
 
@@ -48,4 +48,51 @@ export function streamChatMessage(
       await onFinish(text, response.id);
     },
   });
+}
+
+// MCQ response
+const mcqQuestion = z.object({
+  question_id: z.number(),
+  question: z.string(),
+  options: z.object({
+    a: z.string(),
+    b: z.string(),
+    c: z.string(),
+    d: z.string(),
+  }),
+  answer: z.string().nullable(),
+});
+
+const mcqResponse = z.object({
+  questions: z.array(mcqQuestion),
+});
+
+const otherQuestions = z.object({
+  question_id: z.number(),
+  question: z.string(),
+  answer: z.string().nullable(),
+});
+
+const otherQuestionResponse = z.object({
+  questions: z.array(otherQuestions),
+});
+export async function generateQuestions(prompt: string, format: string) {
+  try {
+    const response = await generateObject({
+      model: openai.responses(AI_MODEL),
+      prompt,
+      schema: format === "MCQ" ? mcqResponse : otherQuestionResponse,
+      providerOptions: {
+        openai: {
+          store: true,
+        },
+      },
+    });
+
+    return response.object;
+  } catch (error) {
+    console.error("Question generation error:", error);
+
+    throw new Error("Failed to generate questions");
+  }
 }
