@@ -12,10 +12,15 @@ import {
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import type { QuestionSet } from "@/lib/types";
 
 const QuestionFormat = ["MCQ", "SENTENCE_BASED", "INTERVIEW_BASED"];
 
-export function GeneratorQuestion() {
+export function GeneratorQuestion({
+  onSuccess,
+}: {
+  onSuccess: (questionSet: Omit<QuestionSet, "id">) => void;
+}) {
   const [topic, setTopic] = useState("");
   const [format, setFormat] = useState("MCQ");
   const [experience, setExperience] = useState("FRESHER_0_1");
@@ -48,7 +53,14 @@ export function GeneratorQuestion() {
       if (!response.ok) throw new Error("Unable to generate questions.");
 
       const result = await response.json();
-      setQuestions(result.questions ?? []);
+      setQuestions(result.questions);
+      onSuccess({
+        topic,
+        format,
+        experienceLevel: experience,
+        count: Number(count),
+        questions: result.questions,
+      });
     } catch (submissionError) {
       setError(
         submissionError instanceof Error
@@ -86,6 +98,7 @@ export function GeneratorQuestion() {
               onChange={(event) => setTopic(event.target.value)}
               placeholder="e.g. React state management"
               required
+              className="border-primary placeholder:text-primary"
             />
           </Field>
 
@@ -100,7 +113,7 @@ export function GeneratorQuestion() {
                 <FieldLabel
                   htmlFor={questionFormat}
                   key={questionFormat}
-                  className="cursor-pointer"
+                  className="cursor-pointer text-primary border-primary"
                 >
                   <Field
                     orientation="horizontal"
@@ -112,6 +125,7 @@ export function GeneratorQuestion() {
                     <RadioGroupItem
                       value={questionFormat}
                       id={questionFormat}
+                      className={"bg-secondary border-primary text-secondary"}
                     />
                   </Field>
                 </FieldLabel>

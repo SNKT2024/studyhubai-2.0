@@ -1,15 +1,69 @@
-import { PreviousQuestions } from "./PreviousQuestions";
-import { GET as getPreviousQuestions } from "../api/question-generator/route";
-import { GeneratorQuestion } from "./GeneratorQuestion";
+"use client";
 
-export default async function QuestionGenerator() {
-  const response = await getPreviousQuestions();
-  const { questions } = await response.json();
+import { useEffect, useState } from "react";
+
+import type { QuestionSet } from "@/lib/types";
+
+import { PreviousQuestions } from "./PreviousQuestions";
+import { GeneratorQuestion } from "./GeneratorQuestion";
+import { QuestionViewer } from "./QuestionViewer";
+
+export default function QuestionGenerator({
+  initialHistory = [],
+}: {
+  initialHistory?: QuestionSet[];
+}) {
+  const [activeSet, setActiveSet] = useState<QuestionSet | null>(null);
+  const [history, setHistory] = useState<QuestionSet[]>(initialHistory);
+
+  useEffect(() => {
+    if (initialHistory.length > 0) return;
+
+    async function loadHistory() {
+      const response = await fetch("/api/question-generator");
+      if (!response.ok) return;
+
+      const result: { questions: QuestionSet[] } = await response.json();
+      setHistory((currentHistory) => {
+        const currentIds = new Set(
+          currentHistory.map((questionSet) => questionSet.id),
+        );
+        return [
+          ...currentHistory,
+          ...result.questions.filter(
+            (questionSet) => !currentIds.has(questionSet.id),
+          ),
+        ];
+      });
+    }
+
+    void loadHistory();
+  }, [initialHistory.length]);
+
+  function handleGeneratedSet(questionSet: Omit<QuestionSet, "id">) {
+    const generatedSet = {
+      ...questionSet,
+      id: `generated-${Date.now()}`,
+    };
+
+    setHistory((currentHistory) => [generatedSet, ...currentHistory]);
+    setActiveSet(generatedSet);
+  }
 
   return (
-    <div className="flex flex-row gap-3 justify-center mt-4">
-      <PreviousQuestions previousQuestions={questions} />
-      <GeneratorQuestion />
+    <div className="mt-4 flex flex-row items-start justify-center gap-3">
+      <PreviousQuestions
+        previousQuestions={history}
+        onSelectSet={setActiveSet}
+      />
+      {activeSet ? (
+        <QuestionViewer
+          questionSet={activeSet}
+          onReset={() => setActiveSet(null)}
+        />
+      ) : (
+        <GeneratorQuestion onSuccess={handleGeneratedSet} />
+      )}
     </div>
   );
 }
