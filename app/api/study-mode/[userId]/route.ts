@@ -3,6 +3,10 @@ import { prisma } from "@/lib/prisma";
 type Params = {
   userId: string;
 };
+
+type ChatParams = {
+  chatId: string;
+};
 export async function GET(
   request: Request,
   { params }: { params: Promise<Params> },

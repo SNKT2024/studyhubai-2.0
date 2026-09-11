@@ -31,7 +31,8 @@ import {
   MessageScrollerViewport,
 } from "@/components/ui/message-scroller";
 import { ContextMode } from "@/lib/generated/prisma/enums";
-import { Bot, LoaderCircle } from "lucide-react";
+// Add Trash2 to your lucide-react imports
+import { Bot, LoaderCircle, Trash2 } from "lucide-react";
 import { FaArrowUp } from "react-icons/fa";
 import { useParams, useRouter } from "next/navigation";
 import { Fragment, memo, useEffect, useRef, useState } from "react";
@@ -41,6 +42,7 @@ import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
 import remarkGfm from "remark-gfm";
 import { Button } from "@/components/ui/button";
 import { toast, Toaster } from "@/components/ui/toast";
+
 type ChatMessage = {
   id: string;
   content: string;
@@ -122,6 +124,10 @@ export function ChatWindow() {
   const [input, setInput] = useState("");
   const [isSending, setIsSending] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+
+  // NEW: Add state to manage deletion loading
+  const [isDeleting, setIsDeleting] = useState(false);
+
   const [loadError, setLoadError] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const viewportRef = useRef<HTMLDivElement>(null);
@@ -162,10 +168,36 @@ export function ChatWindow() {
   }, [lastMessageLength, isSending]);
 
   useEffect(() => {
-    if (!isLoading && !isSending) {
+    if (!isLoading && !isSending && !isDeleting) {
       textareaRef.current?.focus();
     }
-  }, [isLoading, isSending]);
+  }, [isLoading, isSending, isDeleting]);
+
+  // NEW: Handle Chat Deletion
+  async function handleDeleteChat() {
+    if (!confirm("Are you sure you want to delete this chat?")) return;
+
+    setIsDeleting(true);
+    try {
+      const response = await fetch(`/api/study-mode/${userId}/${chatId}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) throw new Error("Failed to delete chat");
+
+      // Replace '/study-mode' with wherever you want the user to go after deletion
+      router.push("/study-mode");
+      // Important: Forces Next.js to re-fetch Server Components (like the sidebar chat list)
+      router.refresh();
+    } catch (error) {
+      console.error("Delete failed:", error);
+      toast.add({
+        title: "Error",
+        description: "Failed to delete chat.",
+      });
+      setIsDeleting(false);
+    }
+  }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -266,13 +298,13 @@ export function ChatWindow() {
 
   if (loadError || !chat) {
     return (
-      <div className="flex flex-col min-h-[min(80vh,52rem)] w-full items-center justify-center rounded-xl   px-6 text-center bg-secondary text-primary gap-3">
+      <div className="flex flex-col min-h-[min(80vh,52rem)] w-full items-center justify-center rounded-xl px-6 text-center bg-secondary text-primary gap-3">
         {loadError ?? "This chat could not be found."}
         <Button
           className="text-secondary p-4 cursor-pointer"
           onClick={() => router.push(`/study-mode`)}
         >
-          Try Again
+          Go Back
         </Button>
       </div>
     );
@@ -282,13 +314,29 @@ export function ChatWindow() {
     <MessageScrollerProvider>
       <div className="w-full max-w-3xl mx-auto">
         <Card className="h-[min(80vh,52rem)] bg-secondary">
-          <CardHeader className="items-center">
-            <CardTitle className="bg-primary uppercase font-normal rounded-lg border-primary w-fit px-3 py-1 text-secondary">
-              {chat.title}
-            </CardTitle>
-            <CardAction className="bg-primary font-normal rounded-lg border-primary w-fit px-3 py-1 text-secondary">
-              {chat.contextMode}
-            </CardAction>
+          {/* UPDATED: Added flex layout to hold Title, Context, and Delete button inline */}
+          <CardHeader className="flex flex-row items-center justify-between">
+            <div className="flex flex-row items-center gap-3">
+              <CardTitle className="bg-primary uppercase font-normal rounded-lg border-primary w-fit px-3 py-1 text-secondary">
+                {chat.title}
+              </CardTitle>
+              <CardAction className="bg-primary font-normal rounded-lg border-primary w-fit px-3 py-1 text-secondary">
+                {chat.contextMode}
+              </CardAction>
+            </div>
+            <Button
+              variant="destructive"
+              size="icon"
+              onClick={handleDeleteChat}
+              disabled={isDeleting}
+              className="ml-auto flex-shrink-0 bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white"
+            >
+              {isDeleting ? (
+                <LoaderCircle className="size-4 animate-spin" />
+              ) : (
+                <Trash2 className="size-4" />
+              )}
+            </Button>
           </CardHeader>
           <CardContent className="min-h-0 flex-1 overflow-hidden p-0">
             {messages.length === 0 ? (
@@ -356,7 +404,7 @@ export function ChatWindow() {
                   onKeyDown={handleKeyDown}
                   placeholder="Ask a study question..."
                   aria-label="Message"
-                  disabled={isSending}
+                  disabled={isSending || isDeleting}
                   className="placeholder:text-secondary text-secondary"
                   style={{ boxShadow: "none", outline: "none" }}
                   rows={2}
@@ -367,7 +415,7 @@ export function ChatWindow() {
                     variant="default"
                     size="icon-sm"
                     className={`ml-auto`}
-                    disabled={!input.trim() || isSending}
+                    disabled={!input.trim() || isSending || isDeleting}
                   >
                     <FaArrowUp className="text-secondary" />
                     <span className="sr-only">Send message</span>

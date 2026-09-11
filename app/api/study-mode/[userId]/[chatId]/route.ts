@@ -76,3 +76,28 @@ export async function POST(
 
   return result.toTextStreamResponse();
 }
+
+export async function DELETE(
+  _request: Request,
+  { params }: { params: Promise<RouteParams> },
+) {
+  try {
+    const { userId, chatId } = await params;
+
+    const chat = await prisma.studyChat.findFirst({
+      where: { id: chatId, userId },
+      select: { id: true },
+    });
+
+    if (!chat) {
+      return Response.json({ error: "Chat not found" }, { status: 404 });
+    }
+
+    await prisma.studyChat.delete({ where: { id: chat.id } });
+
+    return Response.json({ message: "Chat deleted successfully" });
+  } catch (error) {
+    console.error("Delete error:", error);
+    return Response.json({ error: "Failed to delete chat" }, { status: 500 });
+  }
+}

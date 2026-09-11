@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { HiOutlineLightBulb } from "react-icons/hi";
 import { MdMenuBook, MdWork } from "react-icons/md";
+import { MdDelete } from "react-icons/md";
 
 const ContextData = [
   {
@@ -54,6 +55,8 @@ export function ContextSelector() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [chatLoadAttempt, setChatLoadAttempt] = useState(0);
+  const [deletingChatId, setDeletingChatId] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const userId = "123";
 
@@ -91,6 +94,7 @@ export function ContextSelector() {
 
     getAllChats();
   }, [userId, chatLoadAttempt]);
+
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (isCreating) return;
@@ -151,6 +155,34 @@ export function ContextSelector() {
       </div>
     );
   }
+
+  const handleDeleteChat = async (chatId: string) => {
+    if (deletingChatId) return;
+
+    setDeletingChatId(chatId);
+    setDeleteError(null);
+    try {
+      const response = await fetch(`/api/study-mode/${userId}/${chatId}`, {
+        method: "DELETE",
+      });
+
+      const result = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(result?.error ?? "Failed to delete chat");
+      }
+
+      setAllChats((chats) => chats.filter((chat) => chat.id !== chatId));
+    } catch (error) {
+      console.error("Failed to delete chat:", error);
+      setDeleteError(
+        error instanceof Error
+          ? error.message
+          : "We couldn't delete that chat. Please try again.",
+      );
+    } finally {
+      setDeletingChatId(null);
+    }
+  };
 
   return (
     <div className="grid grid-cols-1 gap-5 lg:grid-cols-2 p-3">
@@ -242,16 +274,40 @@ export function ContextSelector() {
               No previous chats yet.
             </p>
           ) : (
-            <div className="flex flex-col gap-1.5 p-1.5">
-              {allchats.map((chat) => (
-                <Button
-                  type="button"
-                  key={chat.id}
-                  className="rounded-lg bg-primary text-secondary hover:bg-secondary hover:text-primary hover:border-primary cursor-pointer px-3 py-2.5 text-sm"
-                  onClick={() => previousChat(chat.id)}
+            <div className="flex  flex-col gap-1.5 p-1.5">
+              {deleteError && (
+                <p
+                  className="px-2 text-center text-sm text-red-700"
+                  role="alert"
                 >
-                  {chat.title}
-                </Button>
+                  {deleteError}
+                </p>
+              )}
+              {allchats.map((chat) => (
+                <div
+                  key={chat.id}
+                  className="flex items-center flex-row  justify-evenly"
+                >
+                  <Button
+                    type="button"
+                    className="min-w-0 flex-1 truncate rounded-lg bg-primary text-secondary hover:bg-secondary hover:text-primary hover:border-primary cursor-pointer px-3 py-2.5 text-sm"
+                    onClick={() => previousChat(chat.id)}
+                  >
+                    {chat.title}
+                  </Button>
+                  <Button
+                    type="button"
+                    className="shrink-0 text-secondary hover:bg-secondary hover:text-primary hover:border-primary cursor-pointer"
+                    disabled={deletingChatId === chat.id}
+                    onClick={() => handleDeleteChat(chat.id)}
+                  >
+                    {deletingChatId === chat.id ? (
+                      <LoaderCircle className="size-4 animate-spin" />
+                    ) : (
+                      <MdDelete />
+                    )}
+                  </Button>
+                </div>
               ))}
             </div>
           )}

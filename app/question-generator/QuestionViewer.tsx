@@ -40,14 +40,14 @@ export function QuestionViewer({
             <AccordionItem
               key={q.question_id || index}
               value={`item-${index}`}
-              className="border rounded-xl bg-background px-4 data-[state=open]:bg-muted/50 text-secondary"
+              className="border-secondary text-secondary rounded-xl bg-background px-4 data-[state=open]:bg-muted/50"
               disabled={!hasAnswer} // Prevents opening if there is no answer
             >
               <AccordionTrigger
                 className={`hover:no-underline ${!hasAnswer ? "cursor-default [&>svg]:hidden" : ""}`}
               >
                 <div className="text-left flex flex-col gap-2">
-                  <span className="font-medium text-sm">
+                  <span className="font-medium text-sm ">
                     {index + 1}. {q.question}
                   </span>
 

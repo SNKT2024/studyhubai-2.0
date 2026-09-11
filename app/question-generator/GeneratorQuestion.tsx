@@ -13,8 +13,21 @@ import {
 import { Input } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import type { QuestionSet } from "@/lib/types";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 const QuestionFormat = ["MCQ", "SENTENCE_BASED", "INTERVIEW_BASED"];
+const experienceOptions = [
+  { value: "FRESHER_0_1", label: "Beginner" },
+  { value: "EXPERIENCED_3_PLUS", label: "Experienced" },
+];
 
 export function GeneratorQuestion({
   onSuccess,
@@ -27,7 +40,7 @@ export function GeneratorQuestion({
   const [count, setCount] = useState("5");
   const [includeAnswers, setIncludeAnswers] = useState(true);
   const [questions, setQuestions] = useState<
-    { question_id: string; question: string; answer: string | null }[]
+    { question_id: number; question: string; answer: string | null }[]
   >([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
@@ -35,6 +48,24 @@ export function GeneratorQuestion({
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
+
+    const trimmedTopic = topic.trim();
+    const questionCount = Number(count);
+    if (!trimmedTopic) {
+      setError("Enter a study topic.");
+      return;
+    }
+
+    if (
+      !Number.isInteger(questionCount) ||
+      questionCount < 1 ||
+      questionCount > 10
+    ) {
+      setError("Choose between 1 and 10 questions.");
+      return;
+    }
+
+    setQuestions([]);
     setIsLoading(true);
 
     try {
@@ -42,23 +73,29 @@ export function GeneratorQuestion({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          topic,
+          topic: trimmedTopic,
           question_format: format,
           experience,
-          count: Number(count),
+          count: questionCount,
           includeAnswers,
         }),
       });
 
-      if (!response.ok) throw new Error("Unable to generate questions.");
-
       const result = await response.json();
+      if (!response.ok) {
+        throw new Error(result.message ?? "Unable to generate questions.");
+      }
+
+      if (!Array.isArray(result.questions)) {
+        throw new Error("The generated response was invalid.");
+      }
+
       setQuestions(result.questions);
       onSuccess({
-        topic,
+        topic: trimmedTopic,
         format,
         experienceLevel: experience,
-        count: Number(count),
+        count: questionCount,
         questions: result.questions,
       });
     } catch (submissionError) {
@@ -113,11 +150,11 @@ export function GeneratorQuestion({
                 <FieldLabel
                   htmlFor={questionFormat}
                   key={questionFormat}
-                  className="cursor-pointer text-primary border-primary"
+                  className="cursor-pointer border-primary text-primary has-data-checked:border-primary has-data-checked:bg-primary has-data-checked:text-secondary"
                 >
                   <Field
                     orientation="horizontal"
-                    className="h-full rounded-lg border border-secondary-foreground/15 px-3 py-2.5 transition-colors hover:bg-secondary-foreground/10"
+                    className="h-full rounded-md px-3 py-2.5 transition-colors hover:bg-primary hover:text-secondary"
                   >
                     <FieldTitle className="uppercase">
                       {questionFormat.replaceAll("_", " ").toLowerCase()}
@@ -125,7 +162,7 @@ export function GeneratorQuestion({
                     <RadioGroupItem
                       value={questionFormat}
                       id={questionFormat}
-                      className={"bg-secondary border-primary text-secondary"}
+                      className="border-primary bg-secondary text-secondary data-checked:border-secondary data-checked:bg-secondary [&>span>span]:bg-primary"
                     />
                   </Field>
                 </FieldLabel>
@@ -136,34 +173,64 @@ export function GeneratorQuestion({
           <div className="grid gap-4 sm:grid-cols-2">
             <Field>
               <FieldLabel htmlFor="experience">Experience level</FieldLabel>
-              <select
-                id="experience"
+
+              <Select
                 value={experience}
-                onChange={(event) => setExperience(event.target.value)}
-                className="h-9 rounded-lg border border-secondary-foreground/20 bg-secondary px-2.5 text-sm outline-none focus-visible:ring-3 focus-visible:ring-primary/30"
+                onValueChange={(value) => setExperience(value ?? "")}
               >
-                <option value="FRESHER_0_1">Beginner</option>
-                <option value="EXPERIENCED_3_PLUS">Experienced</option>
-              </select>
+                <SelectTrigger
+                  id="experience"
+                  className="w-full border-primary"
+                >
+                  <SelectValue placeholder="Select experience" />
+                </SelectTrigger>
+
+                <SelectContent className="bg-primary text-secondary">
+                  <SelectGroup>
+                    <SelectLabel className="text-secondary">
+                      Experience
+                    </SelectLabel>
+                    {experienceOptions.map((option) => (
+                      <SelectItem
+                        key={option.value}
+                        value={option.value}
+                        className="mb-1 cursor-pointer border border-secondary hover:bg-secondary hover:text-primary"
+                      >
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
             </Field>
+
             <Field>
               <FieldLabel htmlFor="question-count">
                 Number of questions
               </FieldLabel>
+
               <Input
                 id="question-count"
                 type="number"
-                min="1"
-                max="10"
+                min={1}
+                className="border-primary"
+                max={10}
+                aria-describedby="question-count-help"
                 value={count}
                 onChange={(event) => setCount(event.target.value)}
                 required
               />
+              <p
+                id="question-count-help"
+                className="text-xs text-secondary-foreground/60"
+              >
+                Choose 1 to 10 questions.
+              </p>
             </Field>
           </div>
 
           <label className="flex cursor-pointer items-center gap-3 text-sm">
-            <input
+            <Input
               type="checkbox"
               checked={includeAnswers}
               onChange={(event) => setIncludeAnswers(event.target.checked)}
