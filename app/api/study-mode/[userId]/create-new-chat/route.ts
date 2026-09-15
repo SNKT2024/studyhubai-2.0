@@ -1,5 +1,5 @@
 import { ContextMode } from "@/lib/generated/prisma/enums";
-import { generateChatMessage } from "@/lib/llm/llmClient";
+import { generateChatMessage } from "@/lib/llm/chatBot";
 import { prisma } from "@/lib/prisma";
 import { loadPrompt } from "@/lib/prompts/prompLoader";
 import { NextRequest } from "next/server";

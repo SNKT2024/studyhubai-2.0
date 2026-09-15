@@ -1,5 +1,5 @@
 import { ExperienceLevel, QuestionFormat } from "@/lib/generated/prisma/enums";
-import { generateQuestions } from "@/lib/llm/llmClient";
+import { generateQuestions } from "@/lib/llm/generateQuestions";
 import { prisma } from "@/lib/prisma";
 import { loadPrompt } from "@/lib/prompts/prompLoader";
 import z from "zod";

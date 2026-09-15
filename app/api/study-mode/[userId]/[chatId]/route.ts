@@ -1,5 +1,5 @@
 import { ContextMode } from "@/lib/generated/prisma/enums";
-import { streamChatMessage } from "@/lib/llm/llmClient";
+import { streamChatMessage } from "@/lib/llm/chatBot";
 import { prisma } from "@/lib/prisma";
 
 type RouteParams = {
