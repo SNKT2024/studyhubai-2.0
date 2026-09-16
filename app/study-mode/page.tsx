@@ -1,8 +1,19 @@
+import { GraduationCap } from "lucide-react";
+
+import { PageShell } from "@/components/page-shell";
+import { PageTitle } from "@/components/page-title";
+
 import { ContextSelector } from "./ContextSelector";
+
 export default function StudyMode() {
   return (
-    <div className="mx-auto min-h-screen flex items-center justify-center">
+    <PageShell maxWidth="4xl">
+      <PageTitle
+        icon={GraduationCap}
+        title="Study Mode"
+        subtitle="Pick a topic and a context mode, then start a session."
+      />
       <ContextSelector />
-    </div>
+    </PageShell>
   );
 }

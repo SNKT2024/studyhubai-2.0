@@ -14,7 +14,7 @@ export function PreviousQuestions({
   onSelectSet,
 }: PreviousQuestionsProps) {
   return (
-    <div className="p-4 flex flex-col gap-3 border-secondary border bg-secondary rounded-2xl">
+    <div className="flex w-full max-w-md flex-col gap-3 rounded-2xl border border-secondary bg-secondary p-4 lg:w-80 lg:shrink-0">
       <h5>Previous Question Sets</h5>
 
       {previousQuestions.length === 0 ? (
@@ -22,7 +22,7 @@ export function PreviousQuestions({
           <Spinner className="size-7 text-primary" />
         </div>
       ) : (
-        <ul>
+        <ul className="space-y-2">
           {previousQuestions.map((entry) => (
             <li
               key={entry.id}
@@ -34,13 +34,13 @@ export function PreviousQuestions({
               }}
               role="button"
               tabIndex={0}
-              className="flex flex-col border border-secondary rounded-3xl px-5 py-3 gap-2 justify-start text-md bg-primary text-secondary cursor-pointer hover:bg-secondary hover:text-primary hover:border-primary transition-all duration-100"
+              className="flex min-w-0 flex-col border border-secondary rounded-3xl px-4 py-3 gap-2 justify-start bg-primary text-secondary cursor-pointer hover:bg-secondary hover:text-primary hover:border-primary transition-all duration-100"
             >
-              <p>{entry.topic}</p>
-              <div className="font-light flex flex-row gap-2 text-sm">
-                <p>{entry.format} |</p>
-                <p>{entry.experienceLevel} |</p>
-                <p>{entry.count} Qs</p>
+              <p className="wrap-break-word">{entry.topic}</p>
+              <div className="flex flex-wrap gap-x-2 gap-y-0.5 text-sm font-light">
+                <p className="whitespace-nowrap">{entry.format} |</p>
+                <p className="whitespace-nowrap">{entry.experienceLevel} |</p>
+                <p className="whitespace-nowrap">{entry.count} Qs</p>
               </div>
             </li>
           ))}

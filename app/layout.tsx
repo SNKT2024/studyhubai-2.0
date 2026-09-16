@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 
 import "./globals.css";
 import { Geist } from "next/font/google";
+import { SiteHeader } from "@/components/site-header";
 import { Toaster } from "@/components/ui/toast";
 export const metadata: Metadata = {
   title: "StudyHub AI",
@@ -13,7 +14,8 @@ const geist = Geist({ subsets: ["latin"] });
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="en" suppressHydrationWarning className={geist.className}>
-      <body className="min-h-screen flex flex-col">
+      <body className="flex min-h-dvh flex-col bg-background text-foreground transition-colors duration-300">
+        <SiteHeader />
         {children}
         <Toaster />
       </body>

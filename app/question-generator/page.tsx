@@ -1,69 +1,19 @@
-"use client";
+import { Sparkles } from "lucide-react";
 
-import { useEffect, useState } from "react";
+import { PageShell } from "@/components/page-shell";
+import { PageTitle } from "@/components/page-title";
 
-import type { QuestionSet } from "@/lib/types";
+import { QuestionGenerator } from "./QuestionGenerator";
 
-import { PreviousQuestions } from "./PreviousQuestions";
-import { GeneratorQuestion } from "./GeneratorQuestion";
-import { QuestionViewer } from "./QuestionViewer";
-
-export default function QuestionGenerator({
-  initialHistory = [],
-}: {
-  initialHistory?: QuestionSet[];
-}) {
-  const [activeSet, setActiveSet] = useState<QuestionSet | null>(null);
-  const [history, setHistory] = useState<QuestionSet[]>(initialHistory);
-
-  useEffect(() => {
-    if (initialHistory.length > 0) return;
-
-    async function loadHistory() {
-      const response = await fetch("/api/question-generator");
-      if (!response.ok) return;
-
-      const result: { questions: QuestionSet[] } = await response.json();
-      setHistory((currentHistory) => {
-        const currentIds = new Set(
-          currentHistory.map((questionSet) => questionSet.id),
-        );
-        return [
-          ...currentHistory,
-          ...result.questions.filter(
-            (questionSet) => !currentIds.has(questionSet.id),
-          ),
-        ];
-      });
-    }
-
-    void loadHistory();
-  }, [initialHistory.length]);
-
-  function handleGeneratedSet(questionSet: Omit<QuestionSet, "id">) {
-    const generatedSet = {
-      ...questionSet,
-      id: `generated-${Date.now()}`,
-    };
-
-    setHistory((currentHistory) => [generatedSet, ...currentHistory]);
-    setActiveSet(generatedSet);
-  }
-
+export default function QuestionGeneratorPage() {
   return (
-    <div className="mt-4 flex flex-row items-start justify-center gap-3">
-      <PreviousQuestions
-        previousQuestions={history}
-        onSelectSet={setActiveSet}
+    <PageShell maxWidth="5xl">
+      <PageTitle
+        icon={Sparkles}
+        title="Question Generator"
+        subtitle="Build a focused practice set in seconds."
       />
-      {activeSet ? (
-        <QuestionViewer
-          questionSet={activeSet}
-          onReset={() => setActiveSet(null)}
-        />
-      ) : (
-        <GeneratorQuestion onSuccess={handleGeneratedSet} />
-      )}
-    </div>
+      <QuestionGenerator />
+    </PageShell>
   );
 }

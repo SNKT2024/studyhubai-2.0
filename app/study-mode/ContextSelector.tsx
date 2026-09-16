@@ -185,14 +185,11 @@ export function ContextSelector() {
   };
 
   return (
-    <div className="grid grid-cols-1 gap-5 lg:grid-cols-2 p-3">
+    <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
       <form
-        className="mx-auto bg-secondary rounded-3xl  w-full max-w-md px-4 py-5"
+        className="bg-secondary rounded-3xl w-full max-w-md px-4 py-5"
         onSubmit={handleSubmit}
       >
-        <div className="text-center">
-          <h3 className="text-2xl uppercase font-bold">Study Mode</h3>
-        </div>
         <div className="mb-4">
           <label htmlFor="study-topic" className="text-sm font-medium">
             Study Topic:
@@ -206,14 +203,14 @@ export function ContextSelector() {
           />
         </div>
         <h3 className="text-sm font-medium">Choose Context Mode:</h3>
-        <div className="mt-2 grid w-full grid-cols-3 gap-2">
+        <div className="mt-2 grid w-full grid-cols-1 gap-2 sm:grid-cols-3">
           {ContextData.map((context) => {
             return (
               <Button
                 type="button"
                 variant="outline"
                 key={context.id}
-                className={`flex min-h-40 w-full flex-col items-center bg-primary justify-start rounded-lg border-secondary hover:border-primary  px-1.5 py-3 text-center text-secondary whitespace-normal cursor-pointer  hover:bg-secondary ${contextMode === context.value ? "text-primary bg-secondary border-primary" : ""}`}
+                className={`flex min-h-24 w-full flex-col items-center bg-primary justify-start rounded-lg border-secondary hover:border-primary  px-1.5 py-3 text-center text-secondary whitespace-normal cursor-pointer  hover:bg-secondary sm:min-h-40 ${contextMode === context.value ? "text-primary bg-secondary border-primary" : ""}`}
                 onClick={() => setContextMode(context.value)}
               >
                 <span className="mb-2 flex size-9  items-center  justify-center ">
@@ -240,7 +237,7 @@ export function ContextSelector() {
           mode according to your requriments and start the study session.
         </p>
       </form>
-      <div className="mx-auto bg-secondary rounded-3xl  w-full max-w-md px-4 py-5">
+      <div className="bg-secondary rounded-3xl w-full max-w-md px-4 py-5">
         <div
           className="h-72 scroll-fade scrollbar-none overflow-y-auto"
           aria-live="polite"

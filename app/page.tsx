@@ -1,12 +1,19 @@
-import QuestionGenerator from "./question-generator/page";
-import StudyMode from "./study-mode/page";
+import { GraduationCap } from "lucide-react";
+
+import { PageShell } from "@/components/page-shell";
+import { PageTitle } from "@/components/page-title";
+
+import { ContextSelector } from "./study-mode/ContextSelector";
 
 export default function Home() {
   return (
-    <div className="min-h-screen w-full max-w-7xl bg-background text-foreground   transition-colors duration-300 mx-auto px-4 md:px-8">
-      <main className="">
-        <StudyMode />
-      </main>
-    </div>
+    <PageShell maxWidth="4xl">
+      <PageTitle
+        icon={GraduationCap}
+        title="Study Mode"
+        subtitle="Pick a topic and a context mode, then start a session."
+      />
+      <ContextSelector />
+    </PageShell>
   );
 }

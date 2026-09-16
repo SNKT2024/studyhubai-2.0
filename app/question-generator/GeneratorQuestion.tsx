@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { LoaderCircle, Sparkles } from "lucide-react";
 
+import { Panel } from "@/components/panel";
 import { Button } from "@/components/ui/button";
 import {
   Field,
@@ -110,21 +111,7 @@ export function GeneratorQuestion({
   }
 
   return (
-    <div className="w-full max-w-2xl rounded-2xl border border-secondary/30 bg-secondary p-5 text-secondary-foreground shadow-xl shadow-black/10 sm:p-7">
-      <div className="mb-6 flex items-start gap-3">
-        <div className="rounded-xl bg-primary p-2.5 text-secondary">
-          <Sparkles className="size-5" aria-hidden="true" />
-        </div>
-        <div>
-          <h1 className="text-xl font-semibold tracking-wide">
-            Question Generator
-          </h1>
-          <p className="mt-1 text-sm text-secondary-foreground/70">
-            Build a focused practice set in seconds.
-          </p>
-        </div>
-      </div>
-
+    <Panel>
       <form onSubmit={handleSubmit} className="space-y-6">
         <FieldGroup>
           <Field>
@@ -286,6 +273,6 @@ export function GeneratorQuestion({
           </ol>
         </section>
       )}
-    </div>
+    </Panel>
   );
 }

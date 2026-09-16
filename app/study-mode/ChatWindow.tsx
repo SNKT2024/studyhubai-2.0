@@ -287,7 +287,7 @@ export function ChatWindow() {
 
   if (isLoading) {
     return (
-      <div className="flex min-h-[min(80vh,52rem)] w-full items-center justify-center rounded-xl border-primary bg-secondary">
+      <div className="flex min-h-64 flex-1 w-full items-center justify-center rounded-xl border-primary bg-secondary">
         <div className="flex items-center gap-3 text-primary" role="status">
           <LoaderCircle className="size-5 animate-spin" />
           <span>Loading your study chat...</span>
@@ -298,7 +298,7 @@ export function ChatWindow() {
 
   if (loadError || !chat) {
     return (
-      <div className="flex flex-col min-h-[min(80vh,52rem)] w-full items-center justify-center rounded-xl px-6 text-center bg-secondary text-primary gap-3">
+      <div className="flex min-h-64 flex-1 w-full flex-col items-center justify-center rounded-xl px-6 text-center bg-secondary text-primary gap-3">
         {loadError ?? "This chat could not be found."}
         <Button
           className="text-secondary p-4 cursor-pointer"
@@ -312,15 +312,14 @@ export function ChatWindow() {
 
   return (
     <MessageScrollerProvider>
-      <div className="w-full max-w-3xl mx-auto">
-        <Card className="h-[min(80vh,52rem)] bg-secondary">
-          {/* UPDATED: Added flex layout to hold Title, Context, and Delete button inline */}
-          <CardHeader className="flex flex-row items-center justify-between">
-            <div className="flex flex-row items-center gap-3">
-              <CardTitle className="bg-primary uppercase font-normal rounded-lg border-primary w-fit px-3 py-1 text-secondary">
+      <div className="flex min-h-0 w-full flex-1 flex-col">
+        <Card className="min-h-0 flex-1 bg-secondary">
+          <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2">
+            <div className="flex min-w-0 flex-row flex-wrap items-center gap-3">
+              <CardTitle className="bg-primary uppercase font-normal rounded-lg border-primary w-fit max-w-full truncate px-3 py-1 text-secondary">
                 {chat.title}
               </CardTitle>
-              <CardAction className="bg-primary font-normal rounded-lg border-primary w-fit px-3 py-1 text-secondary">
+              <CardAction className="bg-primary font-normal rounded-lg border-primary w-fit max-w-full truncate px-3 py-1 text-secondary">
                 {chat.contextMode}
               </CardAction>
             </div>

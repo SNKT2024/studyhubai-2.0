@@ -6,7 +6,12 @@ User will include a choice of Flashcards or Quiz
 If Flashcards you will return a response in JSON with 10 Flashcards,
 Each flashcard will have front(question),back(answer),hint(hint for answer in 2-3 words only) fields.
 If QuizMode return response in JSON with 10 questions
-Include fileds 
+Each question must include:
+- question_id
+- question
+- options: the four choices keyed a, b, c and d
+- answer: the key of the correct choice, one of "a", "b", "c" or "d"
+- explanation: one or two sentences saying why that choice is correct
 
  {{input}},{{choice}}
 - Do not generate unreleated question if enoguh input is not there

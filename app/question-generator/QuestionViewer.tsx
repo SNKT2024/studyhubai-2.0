@@ -1,3 +1,4 @@
+import { Panel } from "@/components/panel";
 import {
   Accordion,
   AccordionContent,
@@ -16,10 +17,10 @@ export function QuestionViewer({
   onReset: () => void;
 }) {
   return (
-    <div className="w-full max-w-2xl rounded-2xl border border-secondary bg-secondary p-5">
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h2 className="text-xl font-semibold">{questionSet.topic}</h2>
+    <Panel>
+      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
+          <h2 className="truncate text-xl font-semibold">{questionSet.topic}</h2>
           <p className="text-sm opacity-70">
             {questionSet.format} • {questionSet.count} Questions
           </p>
@@ -27,7 +28,7 @@ export function QuestionViewer({
         <Button
           onClick={onReset}
           variant="default"
-          className="gap-2 text-secondary hover:text-primary hover:bg-secondary hover:border-primary cursor-pointer"
+          className="shrink-0 gap-2 text-secondary hover:text-primary hover:bg-secondary hover:border-primary cursor-pointer"
         >
           <Plus className="size-4" /> Create New Set
         </Button>
@@ -72,6 +73,6 @@ export function QuestionViewer({
           );
         })}
       </Accordion>
-    </div>
+    </Panel>
   );
 }

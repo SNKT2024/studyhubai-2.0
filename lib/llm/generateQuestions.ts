@@ -1,6 +1,7 @@
-import { generateObject } from "ai";
+import { generateText, Output } from "ai";
 import { openai } from "../llm/llmClient";
 import z from "zod";
+
 const mcqQuestion = z.object({
   question_id: z.number(),
   question: z.string(),
@@ -26,20 +27,36 @@ const otherQuestions = z.object({
 const otherQuestionResponse = z.object({
   questions: z.array(otherQuestions),
 });
-export async function generateQuestions(prompt: string, format: string) {
+
+const model = openai.responses("gpt-4o-mini");
+const providerOptions = { openai: { store: true } };
+
+export async function generateQuestions(
+  prompt: string,
+  format: string,
+): Promise<z.infer<typeof mcqResponse> | z.infer<typeof otherQuestionResponse>> {
   try {
-    const response = await generateObject({
-      model: openai.responses("gpt-4o-mini"),
+    // Branched rather than picking the schema with a ternary: `Output.object` needs a single
+    // concrete schema to infer its result type from, and a union of two schemas defeats that.
+    if (format === "MCQ") {
+      const { output } = await generateText({
+        model,
+        prompt,
+        providerOptions,
+        output: Output.object({ schema: mcqResponse }),
+      });
+
+      return output;
+    }
+
+    const { output } = await generateText({
+      model,
       prompt,
-      schema: format === "MCQ" ? mcqResponse : otherQuestionResponse,
-      providerOptions: {
-        openai: {
-          store: true,
-        },
-      },
+      providerOptions,
+      output: Output.object({ schema: otherQuestionResponse }),
     });
 
-    return response.object;
+    return output;
   } catch (error) {
     console.error("Question generation error:", error);
 

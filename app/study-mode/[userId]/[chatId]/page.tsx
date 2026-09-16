@@ -1,9 +1,11 @@
+import { PageShell } from "@/components/page-shell";
+
 import { ChatWindow } from "../../ChatWindow";
 
 export default function Chat() {
   return (
-    <div className="mx-auto min-h-screen flex items-center justify-center w-200">
+    <PageShell maxWidth="3xl" fill>
       <ChatWindow />
-    </div>
+    </PageShell>
   );
 }

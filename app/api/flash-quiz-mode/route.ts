@@ -1,11 +1,15 @@
+import { SourceType } from "@/lib/generated/prisma/enums";
 import { generateFlashcarQuiz } from "@/lib/llm/flashCards_Quiz";
 import { prisma } from "@/lib/prisma";
 import { loadPrompt } from "@/lib/prompts/prompLoader";
+import { normalizeCorrectAnswer } from "@/lib/quiz";
 import z from "zod";
 
 const flashQuizRequestSchema = z.object({
   action: z.string().trim().min(1),
   topic: z.string().trim().min(1),
+  sourceType: z.enum([SourceType.TOPIC, SourceType.PDF]).optional(),
+  sourceName: z.string().trim().min(1).nullish(),
 });
 
 // Create Flashcards or Quiz
@@ -20,7 +24,7 @@ export async function POST(req: Request) {
       );
     }
 
-    const { action, topic } = parsedRequest.data;
+    const { action, topic, sourceType, sourceName } = parsedRequest.data;
     const userId = "123";
     const normalizedAction = action.toLowerCase();
 
@@ -30,6 +34,11 @@ export async function POST(req: Request) {
         { status: 400 },
       );
     }
+
+    // A PDF has no meaningful topic, so the file name becomes the human-readable label.
+    const resolvedSourceType = sourceType ?? SourceType.TOPIC;
+    const resolvedSourceName = sourceType === SourceType.PDF ? (sourceName ?? null) : null;
+    const label = resolvedSourceName ?? topic;
 
     const prompt = await loadPrompt("flashcard_quiz", {
       input: topic,
@@ -46,8 +55,10 @@ export async function POST(req: Request) {
       const deck = await prisma.flashcardDeck.create({
         data: {
           userId,
-          title: `Flashcards: ${topic}`,
+          title: `Flashcards: ${label}`,
           topic,
+          sourceType: resolvedSourceType,
+          sourceName: resolvedSourceName,
           cards: {
             create: result.flashcards.map((card, index) => ({
               order: index,
@@ -70,14 +81,19 @@ export async function POST(req: Request) {
     const quiz = await prisma.quiz.create({
       data: {
         userId,
-        title: `Quiz: ${topic}`,
+        title: `Quiz: ${label}`,
         topic,
+        sourceType: resolvedSourceType,
+        sourceName: resolvedSourceName,
         questions: {
           create: result.questions.map((question, index) => ({
             order: index,
             question: question.question,
             options: Object.values(question.options),
-            correctAnswer: question.answer,
+            // Store the option text, which is what schema.prisma documents for this column.
+            // The model answers with an option key ("a".."d"), so it has to be resolved first.
+            correctAnswer: normalizeCorrectAnswer(question.options, question.answer),
+            explanation: question.explanation,
           })),
         },
       },
@@ -90,6 +106,35 @@ export async function POST(req: Request) {
 
     return Response.json(
       { message: "Failed to generate flashcards or quiz" },
+      { status: 500 },
+    );
+  }
+}
+
+// Get all flashcard decks and quizzes
+export async function GET() {
+  const userId = "123";
+
+  try {
+    const [decks, quizzes] = await Promise.all([
+      prisma.flashcardDeck.findMany({
+        where: { userId },
+        orderBy: { createdAt: "desc" },
+        include: { cards: { orderBy: { order: "asc" } } },
+      }),
+      prisma.quiz.findMany({
+        where: { userId },
+        orderBy: { createdAt: "desc" },
+        include: { questions: { orderBy: { order: "asc" } } },
+      }),
+    ]);
+
+    return Response.json({ decks, quizzes });
+  } catch (error) {
+    console.error("Failed to load flashcard decks and quizzes:", error);
+
+    return Response.json(
+      { message: "Failed to load saved flashcards and quizzes" },
       { status: 500 },
     );
   }
