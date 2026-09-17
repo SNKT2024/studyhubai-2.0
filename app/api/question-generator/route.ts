@@ -1,4 +1,6 @@
 import { ExperienceLevel, QuestionFormat } from "@/lib/generated/prisma/enums";
+import { chargeOr402, requireViewer } from "@/lib/api-guard";
+import { CREDIT_FEATURES } from "@/lib/credits";
 import { generateQuestions } from "@/lib/llm/generateQuestions";
 import { prisma } from "@/lib/prisma";
 import { loadPrompt } from "@/lib/prompts/prompLoader";
@@ -20,9 +22,10 @@ const questionRequestSchema = z.object({
 });
 // Create Question Set
 export async function POST(req: Request) {
-  try {
-    const userId = "123";
+  const viewer = await requireViewer();
+  if (viewer instanceof Response) return viewer;
 
+  try {
     const parsedRequest = questionRequestSchema.safeParse(await req.json());
 
     if (!parsedRequest.success) {
@@ -31,6 +34,10 @@ export async function POST(req: Request) {
         { status: 400 },
       );
     }
+
+    // Charged only once the request is known to be valid, so a malformed body is not billed.
+    const exhausted = await chargeOr402(viewer, CREDIT_FEATURES.questionSet);
+    if (exhausted) return exhausted;
 
     const { topic, question_format, experience, count, includeAnswers } =
       parsedRequest.data;
@@ -48,7 +55,7 @@ export async function POST(req: Request) {
     // save to db
     await prisma.questionSet.create({
       data: {
-        userId,
+        userId: viewer.userId,
         topic,
         format: question_format,
         experienceLevel: experience,
@@ -72,11 +79,13 @@ export async function POST(req: Request) {
 // Get All Questions
 
 export async function GET() {
-  const userId = "123";
+  const viewer = await requireViewer();
+  if (viewer instanceof Response) return viewer;
 
   try {
     const allQuestions = await prisma.questionSet.findMany({
-      where: { userId },
+      where: { userId: viewer.userId },
+      orderBy: { createdAt: "desc" },
     });
 
     return Response.json({ questions: allQuestions });

@@ -1,4 +1,6 @@
 import { SourceType } from "@/lib/generated/prisma/enums";
+import { chargeOr402, requireViewer } from "@/lib/api-guard";
+import { CREDIT_FEATURES } from "@/lib/credits";
 import { generateFlashcarQuiz } from "@/lib/llm/flashCards_Quiz";
 import { prisma } from "@/lib/prisma";
 import { loadPrompt } from "@/lib/prompts/prompLoader";
@@ -14,6 +16,9 @@ const flashQuizRequestSchema = z.object({
 
 // Create Flashcards or Quiz
 export async function POST(req: Request) {
+  const viewer = await requireViewer();
+  if (viewer instanceof Response) return viewer;
+
   try {
     const parsedRequest = flashQuizRequestSchema.safeParse(await req.json());
 
@@ -25,7 +30,6 @@ export async function POST(req: Request) {
     }
 
     const { action, topic, sourceType, sourceName } = parsedRequest.data;
-    const userId = "123";
     const normalizedAction = action.toLowerCase();
 
     if (normalizedAction !== "flashcards" && normalizedAction !== "quiz") {
@@ -34,6 +38,10 @@ export async function POST(req: Request) {
         { status: 400 },
       );
     }
+
+    // Charged only once the request is known to be valid, so a malformed body is not billed.
+    const exhausted = await chargeOr402(viewer, CREDIT_FEATURES.flashQuiz);
+    if (exhausted) return exhausted;
 
     // A PDF has no meaningful topic, so the file name becomes the human-readable label.
     const resolvedSourceType = sourceType ?? SourceType.TOPIC;
@@ -54,7 +62,7 @@ export async function POST(req: Request) {
 
       const deck = await prisma.flashcardDeck.create({
         data: {
-          userId,
+          userId: viewer.userId,
           title: `Flashcards: ${label}`,
           topic,
           sourceType: resolvedSourceType,
@@ -80,7 +88,7 @@ export async function POST(req: Request) {
 
     const quiz = await prisma.quiz.create({
       data: {
-        userId,
+        userId: viewer.userId,
         title: `Quiz: ${label}`,
         topic,
         sourceType: resolvedSourceType,
@@ -113,17 +121,18 @@ export async function POST(req: Request) {
 
 // Get all flashcard decks and quizzes
 export async function GET() {
-  const userId = "123";
+  const viewer = await requireViewer();
+  if (viewer instanceof Response) return viewer;
 
   try {
     const [decks, quizzes] = await Promise.all([
       prisma.flashcardDeck.findMany({
-        where: { userId },
+        where: { userId: viewer.userId },
         orderBy: { createdAt: "desc" },
         include: { cards: { orderBy: { order: "asc" } } },
       }),
       prisma.quiz.findMany({
-        where: { userId },
+        where: { userId: viewer.userId },
         orderBy: { createdAt: "desc" },
         include: { questions: { orderBy: { order: "asc" } } },
       }),

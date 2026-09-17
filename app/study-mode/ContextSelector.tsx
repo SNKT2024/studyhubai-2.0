@@ -2,12 +2,14 @@
 
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { notifyCreditsChanged } from "@/lib/credits-client";
 import { LoaderCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { HiOutlineLightBulb } from "react-icons/hi";
 import { MdMenuBook, MdWork } from "react-icons/md";
 import { MdDelete } from "react-icons/md";
+import { toast } from "@/components/ui/toast";
 
 const ContextData = [
   {
@@ -58,21 +60,17 @@ export function ContextSelector() {
   const [deletingChatId, setDeletingChatId] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
-  const userId = "123";
-
   useEffect(() => {
     topicTextareaRef.current?.focus();
   }, []);
 
   useEffect(() => {
-    if (!userId) return;
-
     async function getAllChats() {
       try {
         setIsLoading(true);
         setLoadError(null);
 
-        const response = await fetch(`/api/study-mode/${userId}`);
+        const response = await fetch("/api/study-mode");
         const result = await response.json().catch(() => null);
 
         if (!response.ok) {
@@ -93,36 +91,39 @@ export function ContextSelector() {
     }
 
     getAllChats();
-  }, [userId, chatLoadAttempt]);
+  }, [chatLoadAttempt]);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (isCreating) return;
     setIsCreating(true);
     try {
-      const response = await fetch(
-        `/api/study-mode/${userId}/create-new-chat`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            userId,
-            topic: studyTopic,
-            contextMode,
-          }),
+      const response = await fetch("/api/study-mode/create-new-chat", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
         },
-      );
+        body: JSON.stringify({
+          topic: studyTopic,
+          contextMode,
+        }),
+      });
+
+      const result = await response.json().catch(() => null);
 
       if (!response.ok) {
-        throw new Error("Something went wrong while creating the chat");
+        // 402 means the balance is gone; the header badge reflects it too.
+        if (response.status === 402) {
+          toast.add({
+            title: "Out of AI credits",
+            description: result?.message ?? "You've used all your AI credits.",
+          });
+        }
+        throw new Error(result?.error ?? result?.message ?? "Failed");
       }
 
-      const result = await response.json();
-      console.log(result);
-
-      router.push(`/study-mode/${result.userId}/${result.chatId}`);
+      notifyCreditsChanged();
+      router.push(`/study-mode/${result.chatId}`);
     } catch (error) {
       console.error(error);
       setIsCreating(false);
@@ -132,7 +133,7 @@ export function ContextSelector() {
   const previousChat = async (previousChatId: string) => {
     previousChatId.trim();
     try {
-      router.push(`/study-mode/${userId}/${previousChatId}`);
+      router.push(`/study-mode/${previousChatId}`);
     } catch (error) {
       console.error(error);
     }
@@ -162,7 +163,7 @@ export function ContextSelector() {
     setDeletingChatId(chatId);
     setDeleteError(null);
     try {
-      const response = await fetch(`/api/study-mode/${userId}/${chatId}`, {
+      const response = await fetch(`/api/study-mode/${chatId}`, {
         method: "DELETE",
       });
 

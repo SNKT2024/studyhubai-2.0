@@ -1,6 +1,6 @@
 import { PageShell } from "@/components/page-shell";
 
-import { ChatWindow } from "../../ChatWindow";
+import { ChatWindow } from "../ChatWindow";
 
 export default function Chat() {
   return (

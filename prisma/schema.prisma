@@ -37,8 +37,13 @@ enum SourceType {
 }
 
 model User {
-  id        String   @id
-  email     String   @unique
+  id String @id // Clerk's `user_...` id, or `guest_<uuid>` for an anonymous visitor
+
+  // Nullable because a guest has no email. Postgres treats NULLs as distinct in a unique
+  // index, so any number of guest rows can coexist here.
+  email     String?  @unique
+  isGuest   Boolean  @default(false)
+  credits   Int      @default(0) // 50 for a Clerk user, 20 for a guest — set when the row is created
   firstName String?
   lastName  String?
   imageUrl  String?
@@ -51,8 +56,22 @@ model User {
   flashcards   FlashcardDeck[]
   quizzes      Quiz[]
   quizAttempts QuizAttempt[]
+  creditLedger CreditLedger[]
 
   @@map("user")
+}
+
+/// One row per spent credit, so usage can be audited. The balance itself lives on User.credits.
+model CreditLedger {
+  id        String   @id @default(cuid())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  feature   String // 'study-chat' | 'study-message' | 'question-set' | 'flash-quiz'
+  cost      Int      @default(1)
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@map("creditledger")
 }
 
 // Contextual Study Model
@@ -90,7 +109,7 @@ model StudyMessage {
 
 model QuestionSet {
   id              String          @id @default(cuid())
-  user            User?           @relation(fields: [userId], references: [id])
+  user            User?           @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId          String?
   topic           String
   format          QuestionFormat

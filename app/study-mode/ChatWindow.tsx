@@ -31,6 +31,7 @@ import {
   MessageScrollerViewport,
 } from "@/components/ui/message-scroller";
 import { ContextMode } from "@/lib/generated/prisma/enums";
+import { notifyCreditsChanged } from "@/lib/credits-client";
 // Add Trash2 to your lucide-react imports
 import { Bot, LoaderCircle, Trash2 } from "lucide-react";
 import { FaArrowUp } from "react-icons/fa";
@@ -55,6 +56,9 @@ type Chat = {
   messages: ChatMessage[];
   contextMode: ContextMode;
 };
+
+/** Thrown when the API answers 402, so the catch block can word the toast differently. */
+class OutOfCreditsError extends Error {}
 
 const markdownComponents = {
   code({ className, children, ...props }: React.ComponentProps<"code">) {
@@ -118,7 +122,7 @@ const ChatMessageView = memo(function ChatMessageView({
 });
 
 export function ChatWindow() {
-  const { userId, chatId } = useParams<{ userId: string; chatId: string }>();
+  const { chatId } = useParams<{ chatId: string }>();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [chat, setChat] = useState<Chat | null>(null);
   const [input, setInput] = useState("");
@@ -135,10 +139,10 @@ export function ChatWindow() {
   const router = useRouter();
 
   useEffect(() => {
-    if (!userId || !chatId) return;
+    if (!chatId) return;
 
     async function getChat() {
-      const response = await fetch(`/api/study-mode/${userId}/${chatId}`);
+      const response = await fetch(`/api/study-mode/${chatId}`);
       if (!response.ok) throw new Error("Failed to fetch chat");
 
       const result = await response.json();
@@ -155,7 +159,7 @@ export function ChatWindow() {
       .finally(() => {
         setIsLoading(false);
       });
-  }, [userId, chatId]);
+  }, [chatId]);
 
   useEffect(() => {
     const frame = requestAnimationFrame(() => {
@@ -179,7 +183,7 @@ export function ChatWindow() {
 
     setIsDeleting(true);
     try {
-      const response = await fetch(`/api/study-mode/${userId}/${chatId}`, {
+      const response = await fetch(`/api/study-mode/${chatId}`, {
         method: "DELETE",
       });
 
@@ -203,7 +207,7 @@ export function ChatWindow() {
     event.preventDefault();
 
     const content = input.trim();
-    if (!content || !userId || !chatId || isSending) return;
+    if (!content || !chatId || isSending) return;
 
     setIsSending(true);
     setInput("");
@@ -221,11 +225,19 @@ export function ChatWindow() {
     ]);
 
     try {
-      const response = await fetch(`/api/study-mode/${userId}/${chatId}`, {
+      const response = await fetch(`/api/study-mode/${chatId}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content, role: "user" }),
+        body: JSON.stringify({ content }),
       });
+
+      // 402 arrives with no stream body at all — the server charges before it opens the stream.
+      if (response.status === 402) {
+        const result = await response.json().catch(() => null);
+        throw new OutOfCreditsError(
+          result?.message ?? "You've used all your AI credits.",
+        );
+      }
 
       if (!response.ok) throw new Error("Failed to send message");
 
@@ -259,12 +271,20 @@ export function ChatWindow() {
           ),
         );
       }
+
+      notifyCreditsChanged();
     } catch (error) {
       console.error("Something went wrong while sending the message:", error);
-      toast.add({
-        title: "Error",
-        description: "Failed to send message. Please try again.",
-      });
+
+      if (error instanceof OutOfCreditsError) {
+        toast.add({ title: "Out of AI credits", description: error.message });
+      } else {
+        toast.add({
+          title: "Error",
+          description: "Failed to send message. Please try again.",
+        });
+      }
+
       setMessages((currentMessages) =>
         currentMessages.filter(
           (message) =>
@@ -273,6 +293,7 @@ export function ChatWindow() {
         ),
       );
       setInput(content);
+      notifyCreditsChanged();
     } finally {
       setIsSending(false);
     }

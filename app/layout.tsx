@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { ClerkProvider } from "@clerk/nextjs";
 
 import "./globals.css";
 import { Geist } from "next/font/google";
@@ -13,12 +14,14 @@ const geist = Geist({ subsets: ["latin"] });
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en" suppressHydrationWarning className={geist.className}>
-      <body className="flex min-h-dvh flex-col bg-background text-foreground transition-colors duration-300">
-        <SiteHeader />
-        {children}
-        <Toaster />
-      </body>
-    </html>
+    <ClerkProvider>
+      <html lang="en" suppressHydrationWarning className={geist.className}>
+        <body className="flex min-h-dvh flex-col bg-background text-foreground transition-colors duration-300">
+          <SiteHeader />
+          {children}
+          <Toaster />
+        </body>
+      </html>
+    </ClerkProvider>
   );
 }

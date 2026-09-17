@@ -9,6 +9,7 @@ import { Field, FieldGroup, FieldLabel, FieldTitle } from "@/components/ui/field
 import { Input } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { toast } from "@/components/ui/toast";
+import { notifyCreditsChanged } from "@/lib/credits-client";
 import type { FlashcardDeck, Quiz } from "@/lib/types";
 
 import type { FlashQuizMode } from "./FlashQuizStudio";
@@ -125,6 +126,9 @@ export function GenerationForm({
       });
 
       const result = await response.json().catch(() => null);
+
+      // The balance changed either way, so let the header badge re-read it.
+      notifyCreditsChanged();
 
       if (!response.ok) {
         throw new Error(result?.message ?? "Unable to generate right now.");

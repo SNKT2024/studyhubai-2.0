@@ -1,3 +1,4 @@
+import { requireViewer } from "@/lib/api-guard";
 import { prisma } from "@/lib/prisma";
 import { findCorrectOptionIndex } from "@/lib/quiz";
 import type { QuizReviewItem } from "@/lib/types";
@@ -11,6 +12,9 @@ const attemptRequestSchema = z.object({
 });
 
 export async function POST(req: Request) {
+  const viewer = await requireViewer();
+  if (viewer instanceof Response) return viewer;
+
   try {
     const parsedRequest = attemptRequestSchema.safeParse(await req.json());
 
@@ -22,10 +26,10 @@ export async function POST(req: Request) {
     }
 
     const { quizId, answers, timeSpent } = parsedRequest.data;
-    const userId = "123";
 
-    const quiz = await prisma.quiz.findUnique({
-      where: { id: quizId },
+    // Only the owner's quiz can be attempted, so another user's quiz id grades as missing.
+    const quiz = await prisma.quiz.findFirst({
+      where: { id: quizId, userId: viewer.userId },
       include: { questions: { orderBy: { order: "asc" } } },
     });
 
@@ -64,7 +68,7 @@ export async function POST(req: Request) {
     const attempt = await prisma.quizAttempt.create({
       data: {
         quizId,
-        userId,
+        userId: viewer.userId,
         score,
         totalQuestions,
         percentage,

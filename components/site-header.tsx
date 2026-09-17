@@ -1,9 +1,12 @@
 "use client";
 
+import { SignInButton, UserButton, useAuth } from "@clerk/nextjs";
 import { GraduationCap, Layers, Menu, Sparkles, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+
+import { CreditsBadge } from "./credits-badge";
 
 const navLinks = [
   { href: "/", label: "Study Mode", icon: GraduationCap },
@@ -13,6 +16,9 @@ const navLinks = [
 
 export function SiteHeader() {
   const pathname = usePathname();
+  // `useAuth` rather than Clerk's `<Show>`: in the App Router `<Show>` is an async Server
+  // Component, and this header is a client component.
+  const { isLoaded, isSignedIn } = useAuth();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [lastPathname, setLastPathname] = useState(pathname);
   const headerRef = useRef<HTMLElement>(null);
@@ -73,37 +79,58 @@ export function SiteHeader() {
           StudyHub AI
         </Link>
 
-        <nav aria-label="Main" className="hidden md:block">
-          <ul className="flex items-center gap-1.5">
-            {navLinks.map((link) => (
-              <li key={link.href}>
-                <Link
-                  href={link.href}
-                  aria-current={isCurrent(link.href) ? "page" : undefined}
-                  className={linkClass(isCurrent(link.href))}
-                >
-                  <link.icon className="size-4" aria-hidden="true" />
-                  {link.label}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </nav>
+        <div className="flex items-center gap-2">
+          <nav aria-label="Main" className="hidden md:block">
+            <ul className="flex items-center gap-1.5">
+              {navLinks.map((link) => (
+                <li key={link.href}>
+                  <Link
+                    href={link.href}
+                    aria-current={isCurrent(link.href) ? "page" : undefined}
+                    className={linkClass(isCurrent(link.href))}
+                  >
+                    <link.icon className="size-4" aria-hidden="true" />
+                    {link.label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </nav>
 
-        <button
-          type="button"
-          aria-expanded={isMenuOpen}
-          aria-controls="site-nav-mobile"
-          aria-label={isMenuOpen ? "Close main menu" : "Open main menu"}
-          onClick={() => setIsMenuOpen((open) => !open)}
-          className="-mr-1 flex size-10 shrink-0 cursor-pointer items-center justify-center rounded-lg border border-transparent transition-colors hover:border-secondary/40 hover:bg-secondary/10 focus-visible:ring-3 focus-visible:ring-secondary/50 focus-visible:outline-none md:hidden"
-        >
-          {isMenuOpen ? (
-            <X className="size-5" aria-hidden="true" />
-          ) : (
-            <Menu className="size-5" aria-hidden="true" />
-          )}
-        </button>
+          {/* Shown to everyone, guests included — the remaining balance is the whole point of
+              the guest tier, and Clerk counts a guest as signed out. */}
+          <CreditsBadge />
+
+          {isLoaded ? (
+            isSignedIn ? (
+              <UserButton />
+            ) : (
+              <SignInButton mode="modal">
+                <button
+                  type="button"
+                  className="cursor-pointer rounded-lg border border-secondary/40 px-3 py-1.5 text-sm transition-colors hover:bg-secondary/10 focus-visible:ring-3 focus-visible:ring-secondary/50 focus-visible:outline-none"
+                >
+                  Sign in
+                </button>
+              </SignInButton>
+            )
+          ) : null}
+
+          <button
+            type="button"
+            aria-expanded={isMenuOpen}
+            aria-controls="site-nav-mobile"
+            aria-label={isMenuOpen ? "Close main menu" : "Open main menu"}
+            onClick={() => setIsMenuOpen((open) => !open)}
+            className="-mr-1 flex size-10 shrink-0 cursor-pointer items-center justify-center rounded-lg border border-transparent transition-colors hover:border-secondary/40 hover:bg-secondary/10 focus-visible:ring-3 focus-visible:ring-secondary/50 focus-visible:outline-none md:hidden"
+          >
+            {isMenuOpen ? (
+              <X className="size-5" aria-hidden="true" />
+            ) : (
+              <Menu className="size-5" aria-hidden="true" />
+            )}
+          </button>
+        </div>
       </div>
 
       {isMenuOpen ? (

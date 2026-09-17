@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { notifyCreditsChanged } from "@/lib/credits-client";
 import type { QuestionSet } from "@/lib/types";
 import {
   Select,
@@ -83,6 +84,8 @@ export function GeneratorQuestion({
       });
 
       const result = await response.json();
+      notifyCreditsChanged();
+
       if (!response.ok) {
         throw new Error(result.message ?? "Unable to generate questions.");
       }
