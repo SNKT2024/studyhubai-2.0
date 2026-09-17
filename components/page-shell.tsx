@@ -28,6 +28,11 @@ export function PageShell({
 }) {
   return (
     <main
+      // Marks a page whose child owns the scrolling — see the `body:has()` rule in
+      // globals.css, which pins the body to the viewport so the child has a height
+      // to fill. Rendered as an attribute rather than a class so the rule can match
+      // it from the body, which a page cannot reach with its own class names.
+      data-fill={fill ? "" : undefined}
       className={cn(
         "mx-auto flex w-full flex-1 flex-col gap-4 px-4 py-6 md:px-8",
         MAX_WIDTH[maxWidth],

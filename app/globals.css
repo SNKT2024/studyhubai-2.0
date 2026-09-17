@@ -128,3 +128,16 @@
     @apply font-sans;
   }
 }
+
+/*
+ * A `fill` page (see components/page-shell.tsx) hands the scrolling to one of its
+ * own children instead of to the document. `min-h-dvh` on the body is only a
+ * floor, so without this the child's content would stretch the body and the whole
+ * document with it — the chat card would grow past the viewport and the message
+ * list would never scroll. Pinning the body gives the descendant chain a real
+ * height, so `flex-1`/`h-full` resolve and the list scrolls inside the card.
+ */
+body:has(> main[data-fill]) {
+  height: 100dvh;
+  overflow: hidden;
+}
