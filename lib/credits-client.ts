@@ -11,7 +11,11 @@ export function notifyCreditsChanged() {
 
 export type CreditBalance = {
   credits: number;
-  kind: "user" | "guest";
+  /**
+   * `"none"` means the visitor has no identity at all — no guest cookie, or they have hit the
+   * per-IP cap on minting guest identities. The badge offers sign-up instead of a number.
+   */
+  kind: "user" | "guest" | "none";
 };
 
 /** True when a response body is the 402 the API sends once the balance is gone. */

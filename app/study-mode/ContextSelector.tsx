@@ -37,14 +37,13 @@ const ContextData = [
   },
 ];
 
+/** Mirrors the projection in app/api/study-mode/route.ts — only the fields the list renders. */
 type Chat = {
   id: string;
-  userId: string;
   title: string;
   contextMode: string;
   createdAt: string;
   updatedAt: string;
-  latestResponseId: string | null;
 };
 
 export function ContextSelector() {

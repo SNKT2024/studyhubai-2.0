@@ -40,19 +40,36 @@ export function FlashcardRunner({
     if (total === 0) return;
 
     function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === "ArrowRight") {
-        setIndex((current) => Math.min(current + 1, total - 1));
+      if (event.key === "ArrowRight" || event.key === "ArrowDown") {
+        event.preventDefault();
+        // Guarded rather than clamped so the flip only resets when the card actually changes.
+        if (index < total - 1) goTo(index + 1);
+        return;
       }
 
-      if (event.key === "ArrowLeft") {
-        setIndex((current) => Math.max(current - 1, 0));
+      if (event.key === "ArrowLeft" || event.key === "ArrowUp") {
+        event.preventDefault();
+        if (index > 0) goTo(index - 1);
+        return;
+      }
+
+      if (event.key === " ") {
+        const target = event.target as HTMLElement | null;
+
+        // A focused control owns its own Space activation — the card itself, the Prev/Next
+        // buttons, a link. Handling it here too would either double-toggle or hijack the press.
+        if (target?.closest("button, a, input, textarea, select")) return;
+
+        // Space scrolls the page by default, and the card copy promises this shortcut.
+        event.preventDefault();
+        setIsFlipped((current) => !current);
       }
     }
 
     window.addEventListener("keydown", handleKeyDown);
 
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [total]);
+  }, [index, total]);
 
   if (total === 0) {
     return (
@@ -216,6 +233,10 @@ export function FlashcardRunner({
           <ArrowRight aria-hidden="true" />
         </Button>
       </div>
+
+      <p className="mt-3 text-center text-xs opacity-60">
+        Keyboard: Space to flip • ← → or ↑ ↓ to move between cards
+      </p>
 
       <Button
         type="button"

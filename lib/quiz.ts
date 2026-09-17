@@ -17,6 +17,22 @@ export function optionLetter(index: number): string {
   return String.fromCharCode(97 + index);
 }
 
+/**
+ * The `QuizQuestion` columns a client may see before it submits an attempt.
+ *
+ * `correctAnswer` and `explanation` are absent on purpose: selecting them is what used to leak
+ * the answers in the generation response and the library listing. Keeping the projection here
+ * means every reader that is allowed to omit them has one place to import it from, and
+ * `app/api/flash-quiz-mode/check/route.ts` is the only route that selects them.
+ */
+export const PUBLIC_QUESTION_SELECT = {
+  id: true,
+  quizId: true,
+  order: true,
+  question: true,
+  options: true,
+} as const;
+
 /** True when `optionText` at `index` is the answer, whether it was stored as text or a letter. */
 export function isCorrectOption(
   optionText: string,
@@ -58,4 +74,36 @@ export function normalizeCorrectAnswer(
   // The model may have returned the option text rather than its key.
   const byText = values.find((value) => value === answer);
   return byText ?? answer;
+}
+
+export type GradedAnswer = {
+  isCorrect: boolean;
+  /** Index into `options`, or -1 when the stored answer matches no option. */
+  correctOptionIndex: number;
+};
+
+/**
+ * Grades one answer.
+ *
+ * Shared by `POST /api/flash-quiz-mode/check` (the answer a user checks mid-quiz) and
+ * `POST /api/flash-quiz-mode/attempt` (the final score) so the two can never disagree about
+ * what counts as correct — a user seeing "Correct" and then a lower score would be a bug with
+ * no obvious cause.
+ *
+ * When `correctOptionIndex` is -1 the stored answer matches no option — legacy rows whose letter
+ * no longer lines up with the options array — so nothing grades as correct rather than everyone
+ * silently marking themselves right.
+ */
+export function gradeAnswer(
+  options: string[],
+  correctAnswer: string,
+  chosen: string | null,
+): GradedAnswer {
+  const correctOptionIndex = findCorrectOptionIndex(options, correctAnswer);
+  const chosenIndex = chosen === null ? -1 : options.indexOf(chosen);
+
+  return {
+    isCorrect: chosenIndex !== -1 && chosenIndex === correctOptionIndex,
+    correctOptionIndex,
+  };
 }

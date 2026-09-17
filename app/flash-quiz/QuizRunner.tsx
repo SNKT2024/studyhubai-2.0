@@ -7,14 +7,17 @@ import { Panel } from "@/components/panel";
 import { Button } from "@/components/ui/button";
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty";
 import { toast } from "@/components/ui/toast";
-import { findCorrectOptionIndex, optionLetter } from "@/lib/quiz";
-import type { Quiz, QuizAttemptRecord } from "@/lib/types";
+import { optionLetter } from "@/lib/quiz";
+import type { Quiz, QuizAttemptRecord, QuizQuestionCheck } from "@/lib/types";
 
 function formatDuration(totalSeconds: number): string {
   const minutes = Math.floor(totalSeconds / 60);
   const seconds = totalSeconds % 60;
   return `${minutes}:${String(seconds).padStart(2, "0")}`;
 }
+
+/** A graded answer, tagged with the question it belongs to. */
+type Reveal = QuizQuestionCheck & { questionId: string };
 
 export function QuizRunner({
   quiz,
@@ -27,7 +30,8 @@ export function QuizRunner({
 }) {
   const [index, setIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
-  const [isRevealed, setIsRevealed] = useState(false);
+  const [reveal, setReveal] = useState<Reveal | null>(null);
+  const [isChecking, setIsChecking] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [elapsed, setElapsed] = useState(0);
 
@@ -66,10 +70,10 @@ export function QuizRunner({
   }
 
   const selected = answers[question.id] ?? null;
-  const correctIndex = findCorrectOptionIndex(
-    question.options,
-    question.correctAnswer,
-  );
+  // Tagged by question id, so a result from the previous question can never colour this one.
+  const currentReveal = reveal?.questionId === question.id ? reveal : null;
+  const isRevealed = currentReveal !== null;
+  const correctIndex = currentReveal?.correctOptionIndex ?? -1;
   const isLastQuestion = index === total - 1;
   const answeredCount = Object.keys(answers).length;
 
@@ -78,9 +82,47 @@ export function QuizRunner({
     setAnswers((current) => ({ ...current, [question.id]: optionText }));
   }
 
-  function reveal() {
-    if (selected === null) return;
-    setIsRevealed(true);
+  /**
+   * Asks the server whether `selected` was right.
+   *
+   * The answers are not in the payload we were given — see `PUBLIC_QUESTION_SELECT` in
+   * lib/quiz.ts — so this round trip is what replaces reading `question.correctAnswer` locally.
+   */
+  async function revealAnswer() {
+    if (selected === null || isChecking) return;
+
+    setIsChecking(true);
+
+    try {
+      const response = await fetch("/api/flash-quiz-mode/check", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          quizId: quiz.id,
+          questionId: question.id,
+          chosen: selected,
+        }),
+      });
+
+      const result = await response.json().catch(() => null);
+
+      if (!response.ok || typeof result?.isCorrect !== "boolean") {
+        throw new Error(result?.message ?? "Couldn't check that answer.");
+      }
+
+      setReveal({ ...(result as QuizQuestionCheck), questionId: question.id });
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Couldn't check that answer.";
+
+      toast.add({
+        title: "Couldn't check that answer",
+        description: message,
+        type: "error",
+      });
+    } finally {
+      setIsChecking(false);
+    }
   }
 
   async function finish() {
@@ -120,7 +162,7 @@ export function QuizRunner({
     }
 
     setIndex((current) => current + 1);
-    setIsRevealed(false);
+    setReveal(null);
   }
 
   return (
@@ -209,25 +251,24 @@ export function QuizRunner({
         })}
       </div>
 
-      {isRevealed && (
+      {currentReveal && (
         <div
           className="mt-4 rounded-xl bg-background/70 p-4 text-sm"
           role="status"
           aria-live="polite"
         >
           <p className="font-semibold">
-            {selected === question.options[correctIndex]
-              ? "Correct"
-              : "Not quite"}
+            {currentReveal.isCorrect ? "Correct" : "Not quite"}
           </p>
+          {/* -1 means the stored answer matched no option, so there is nothing to show. */}
           {correctIndex !== -1 && (
             <p className="mt-1 opacity-80">
               Answer: {question.options[correctIndex]}
             </p>
           )}
           {/* explanation is null for every row the current generator writes; render if present. */}
-          {question.explanation && (
-            <p className="mt-1 opacity-80">{question.explanation}</p>
+          {currentReveal.explanation && (
+            <p className="mt-1 opacity-80">{currentReveal.explanation}</p>
           )}
         </div>
       )}
@@ -256,11 +297,16 @@ export function QuizRunner({
           <Button
             type="button"
             size="lg"
-            onClick={reveal}
-            disabled={selected === null}
+            onClick={() => void revealAnswer()}
+            disabled={selected === null || isChecking}
             className="w-full text-secondary"
           >
-            Check answer
+            {isChecking ? (
+              <LoaderCircle className="animate-spin" aria-hidden="true" />
+            ) : (
+              <Check aria-hidden="true" />
+            )}
+            {isChecking ? "Checking..." : "Check answer"}
           </Button>
         )}
       </div>

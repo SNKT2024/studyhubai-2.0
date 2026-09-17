@@ -1,9 +1,10 @@
 import { auth, currentUser } from "@clerk/nextjs/server";
 import type { User } from "@clerk/nextjs/server";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 
-import { GUEST_COOKIE, isValidGuestId } from "./guest-cookie";
+import { GUEST_COOKIE, verifyGuestCookieValue } from "./guest-cookie";
 import { prisma } from "./prisma";
+import { RATE_LIMITS, checkRateLimit, clientIp } from "./rate-limit";
 
 /** A signed-in user starts with 50 AI calls. Never refills. */
 export const USER_CREDITS = 50;
@@ -84,6 +85,28 @@ async function resolveClerkUser(userId: string): Promise<Viewer> {
   return { kind: "user", userId, credits: existing.credits, email };
 }
 
+/**
+ * Whether this request may bring a *new* guest row into existence.
+ *
+ * Without this the guest tier is unlimited: clearing the cookie makes `proxy.ts` mint a fresh
+ * id, and `resolveGuest` below would hand that id a brand new balance of `GUEST_CREDITS`. The
+ * cookie signature stops an id being forged, but it cannot stop a client from discarding its
+ * own, so the cap has to live here.
+ *
+ * Checked only on the create path, so an established guest never pays for a counter read.
+ */
+async function mayIssueGuestIdentity(): Promise<boolean> {
+  const ip = clientIp(await headers());
+
+  // No IP to key on. Allowing it is the lesser evil: a shared bucket would let one caller
+  // exhaust the day's identities for everyone behind the same unidentifiable path.
+  if (!ip) return true;
+
+  const result = await checkRateLimit(`guest-issue:${ip}`, RATE_LIMITS.guestIssue);
+
+  return result.allowed;
+}
+
 async function resolveGuest(guestId: string): Promise<Viewer | null> {
   const existing = await prisma.user.findUnique({
     where: { id: guestId },
@@ -91,12 +114,15 @@ async function resolveGuest(guestId: string): Promise<Viewer | null> {
   });
 
   if (existing) {
-    // A row with this id that is not a guest means the cookie was forged to name a real
-    // account. Refuse it rather than handing back that user's data.
+    // Defence in depth. The cookie is signed, so this should be unreachable — but a row with
+    // this id that is not a guest would mean the id names a real account, and handing back that
+    // user's data is never the right answer.
     if (!existing.isGuest) return null;
 
     return { kind: "guest", userId: guestId, credits: existing.credits };
   }
+
+  if (!(await mayIssueGuestIdentity())) return null;
 
   const created = await prisma.user.create({
     data: { id: guestId, isGuest: true, credits: GUEST_CREDITS },
@@ -114,8 +140,8 @@ export async function getViewer(): Promise<Viewer | null> {
   const { userId } = await auth();
   if (userId) return resolveClerkUser(userId);
 
-  const guestId = (await cookies()).get(GUEST_COOKIE)?.value;
-  if (!isValidGuestId(guestId)) return null;
+  const guestId = verifyGuestCookieValue((await cookies()).get(GUEST_COOKIE)?.value);
+  if (!guestId) return null;
 
   return resolveGuest(guestId);
 }

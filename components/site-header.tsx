@@ -1,7 +1,7 @@
 "use client";
 
 import { SignInButton, UserButton, useAuth } from "@clerk/nextjs";
-import { GraduationCap, Layers, Menu, Sparkles, X } from "lucide-react";
+import { GraduationCap, House, Layers, Menu, Sparkles, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
@@ -9,7 +9,8 @@ import { useEffect, useRef, useState } from "react";
 import { CreditsBadge } from "./credits-badge";
 
 const navLinks = [
-  { href: "/", label: "Study Mode", icon: GraduationCap },
+  { href: "/", label: "Home", icon: House },
+  { href: "/study-mode", label: "Study Mode", icon: GraduationCap },
   { href: "/flash-quiz", label: "Flashcards & Quiz", icon: Layers },
   { href: "/question-generator", label: "Question Generator", icon: Sparkles },
 ] as const;

@@ -1,7 +1,11 @@
 import { clerkMiddleware } from "@clerk/nextjs/server";
 import { NextResponse, type NextRequest } from "next/server";
 
-import { GUEST_COOKIE, createGuestId, isValidGuestId } from "./lib/guest-cookie";
+import {
+  GUEST_COOKIE,
+  createGuestCookieValue,
+  verifyGuestCookieValue,
+} from "./lib/guest-cookie";
 
 /**
  * Next.js 16 renamed Middleware to Proxy; `middleware.ts` still works but is deprecated, and
@@ -17,10 +21,11 @@ export default clerkMiddleware((_auth, request: NextRequest) => {
   const response = NextResponse.next();
   const existing = request.cookies.get(GUEST_COOKIE)?.value;
 
-  // Also re-issues when the cookie is present but malformed, so a forged or corrupted value
-  // heals on the next request instead of leaving the visitor permanently unidentified.
-  if (!isValidGuestId(existing)) {
-    response.cookies.set(GUEST_COOKIE, createGuestId(), {
+  // Also re-issues when the cookie is present but fails its signature check, so a forged or
+  // corrupted value heals on the next request instead of leaving the visitor permanently
+  // unidentified.
+  if (!verifyGuestCookieValue(existing)) {
+    response.cookies.set(GUEST_COOKIE, createGuestCookieValue(), {
       httpOnly: true,
       sameSite: "lax",
       secure: process.env.NODE_ENV === "production",

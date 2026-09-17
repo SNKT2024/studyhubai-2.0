@@ -42,7 +42,7 @@ import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
 import remarkGfm from "remark-gfm";
 import { Button } from "@/components/ui/button";
-import { toast, Toaster } from "@/components/ui/toast";
+import { toast } from "@/components/ui/toast";
 
 type ChatMessage = {
   id: string;
@@ -349,7 +349,7 @@ export function ChatWindow() {
               size="icon"
               onClick={handleDeleteChat}
               disabled={isDeleting}
-              className="ml-auto flex-shrink-0 bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white"
+              className="ml-auto shrink-0 bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white"
             >
               {isDeleting ? (
                 <LoaderCircle className="size-4 animate-spin" />
@@ -383,7 +383,7 @@ export function ChatWindow() {
                           message.role === "assistant" && (
                             <MessageScrollerItem>
                               <Message aria-live="polite">
-                                <MessageContent className="flex w-fit flex-row items-center gap-2 rounded-xl bg-muted px-4 py-3 bg-primary">
+                                <MessageContent className="flex w-fit flex-row items-center gap-2 rounded-xl bg-primary px-4 py-3">
                                   <Bot className="size-4 text-secondary" />
                                   <span className="flex items-center gap-1 text-secondary">
                                     AI is thinking

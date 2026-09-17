@@ -1,11 +1,31 @@
 import { extractText } from "unpdf";
 
+import { requireViewer } from "@/lib/api-guard";
+import { RATE_LIMITS, clientIp, enforceRateLimit } from "@/lib/rate-limit";
+
 /** Upload cap. Kept modest because the extracted text is fed straight into a prompt. */
 const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
 /** Long PDFs would blow up the prompt, so the tail is dropped and the client is told. */
 const MAX_CHARACTERS = 40_000;
 
 export async function POST(req: Request) {
+  // Gated before the body is touched: this route buffers up to 10 MB and parses it, which made
+  // it the cheapest thing in the app to abuse when it was open to anyone.
+  const viewer = await requireViewer();
+  if (viewer instanceof Response) return viewer;
+
+  // Keyed by IP rather than viewer: this is a resource limit, and a caller rotating guest
+  // identities should not get a fresh allowance with each one.
+  const ip = clientIp(req.headers);
+
+  if (ip) {
+    const throttled = await enforceRateLimit(
+      `extract:${ip}`,
+      RATE_LIMITS.pdfExtract,
+    );
+    if (throttled) return throttled;
+  }
+
   try {
     const formData = await req.formData();
     const file = formData.get("file");

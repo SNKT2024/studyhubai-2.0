@@ -1,10 +1,15 @@
 import { SourceType } from "@/lib/generated/prisma/enums";
-import { chargeOr402, requireViewer } from "@/lib/api-guard";
+import {
+  chargeOr402,
+  enforceAiRateLimit,
+  refundOnFailure,
+  requireViewer,
+} from "@/lib/api-guard";
 import { CREDIT_FEATURES } from "@/lib/credits";
 import { generateFlashcarQuiz } from "@/lib/llm/flashCards_Quiz";
 import { prisma } from "@/lib/prisma";
-import { loadPrompt } from "@/lib/prompts/prompLoader";
-import { normalizeCorrectAnswer } from "@/lib/quiz";
+import { renderPrompt } from "@/lib/prompts";
+import { PUBLIC_QUESTION_SELECT, normalizeCorrectAnswer } from "@/lib/quiz";
 import z from "zod";
 
 const flashQuizRequestSchema = z.object({
@@ -14,10 +19,59 @@ const flashQuizRequestSchema = z.object({
   sourceName: z.string().trim().min(1).nullish(),
 });
 
+/**
+ * How many decks and quizzes the library returns.
+ *
+ * The sidebar renders every row it is given and has no pagination, so this is a display cap
+ * rather than a page. Bounded so the response cannot grow with the age of the account — the
+ * nested cards and questions are what made this expensive.
+ */
+const LIBRARY_LIMIT = 50;
+
+const CARD_SELECT = {
+  id: true,
+  order: true,
+  front: true,
+  back: true,
+  hint: true,
+  isMastered: true,
+} as const;
+
+const DECK_SELECT = {
+  id: true,
+  title: true,
+  topic: true,
+  sourceType: true,
+  sourceName: true,
+  createdAt: true,
+  updatedAt: true,
+  cards: { select: CARD_SELECT, orderBy: { order: "asc" } },
+} as const;
+
+/**
+ * A quiz without its answers. Uses the shared projection so the generate response and the
+ * library listing cannot drift apart on which fields are safe to send.
+ */
+const QUIZ_SELECT = {
+  id: true,
+  deckId: true,
+  title: true,
+  topic: true,
+  sourceType: true,
+  sourceName: true,
+  createdAt: true,
+  updatedAt: true,
+  questions: { select: PUBLIC_QUESTION_SELECT, orderBy: { order: "asc" } },
+} as const;
+
 // Create Flashcards or Quiz
 export async function POST(req: Request) {
   const viewer = await requireViewer();
   if (viewer instanceof Response) return viewer;
+
+  // Whether a credit was actually taken, so the failure path never refunds a request that was
+  // rejected before it was billed.
+  let charged = false;
 
   try {
     const parsedRequest = flashQuizRequestSchema.safeParse(await req.json());
@@ -39,16 +93,21 @@ export async function POST(req: Request) {
       );
     }
 
+    // Throttled before charging, so a caller over the burst limit is never billed.
+    const throttled = await enforceAiRateLimit(viewer, "flash-quiz");
+    if (throttled) return throttled;
+
     // Charged only once the request is known to be valid, so a malformed body is not billed.
     const exhausted = await chargeOr402(viewer, CREDIT_FEATURES.flashQuiz);
     if (exhausted) return exhausted;
+    charged = true;
 
     // A PDF has no meaningful topic, so the file name becomes the human-readable label.
     const resolvedSourceType = sourceType ?? SourceType.TOPIC;
     const resolvedSourceName = sourceType === SourceType.PDF ? (sourceName ?? null) : null;
     const label = resolvedSourceName ?? topic;
 
-    const prompt = await loadPrompt("flashcard_quiz", {
+    const prompt = renderPrompt("flashcard_quiz", {
       input: topic,
       choice: normalizedAction === "flashcards" ? "Flashcards" : "Quiz",
     });
@@ -76,10 +135,12 @@ export async function POST(req: Request) {
             })),
           },
         },
-        include: { cards: true },
+        select: DECK_SELECT,
       });
 
-      return Response.json({ ...result, deck });
+      // Only the persisted deck, not `...result`: the raw model output is not a shape the
+      // client uses, and forwarding it means forwarding whatever the model chose to include.
+      return Response.json({ deck });
     }
 
     if (!("questions" in result)) {
@@ -105,12 +166,18 @@ export async function POST(req: Request) {
           })),
         },
       },
-      include: { questions: true },
+      select: QUIZ_SELECT,
     });
 
-    return Response.json({ ...result, quiz });
+    return Response.json({ quiz });
   } catch (error) {
     console.error("Flashcard or quiz generation error:", error);
+
+    // The charge happens before the model call, so reaching here with `charged` set means the
+    // caller paid for a generation that never arrived.
+    if (charged) {
+      await refundOnFailure(viewer, CREDIT_FEATURES.flashQuiz, "generation-failed");
+    }
 
     return Response.json(
       { message: "Failed to generate flashcards or quiz" },
@@ -129,12 +196,14 @@ export async function GET() {
       prisma.flashcardDeck.findMany({
         where: { userId: viewer.userId },
         orderBy: { createdAt: "desc" },
-        include: { cards: { orderBy: { order: "asc" } } },
+        take: LIBRARY_LIMIT,
+        select: DECK_SELECT,
       }),
       prisma.quiz.findMany({
         where: { userId: viewer.userId },
         orderBy: { createdAt: "desc" },
-        include: { questions: { orderBy: { order: "asc" } } },
+        take: LIBRARY_LIMIT,
+        select: QUIZ_SELECT,
       }),
     ]);
 

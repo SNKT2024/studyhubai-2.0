@@ -2,7 +2,6 @@
 
 import { Spinner } from "@/components/ui/spinner";
 import type { QuestionSet } from "@/lib/types";
-import { useState } from "react";
 
 type PreviousQuestionsProps = {
   previousQuestions: QuestionSet[];

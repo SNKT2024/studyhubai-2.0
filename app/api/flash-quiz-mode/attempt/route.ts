@@ -1,6 +1,6 @@
 import { requireViewer } from "@/lib/api-guard";
 import { prisma } from "@/lib/prisma";
-import { findCorrectOptionIndex } from "@/lib/quiz";
+import { gradeAnswer } from "@/lib/quiz";
 import type { QuizReviewItem } from "@/lib/types";
 import z from "zod";
 
@@ -39,12 +39,13 @@ export async function POST(req: Request) {
 
     const review: QuizReviewItem[] = quiz.questions.map((question) => {
       const chosen = answers[question.id] ?? null;
-      const correctOptionIndex = findCorrectOptionIndex(
+      // Shared with the mid-quiz check endpoint, so a "Correct" the user saw while answering
+      // cannot turn into a wrong answer in the final score.
+      const { isCorrect, correctOptionIndex } = gradeAnswer(
         question.options,
         question.correctAnswer,
+        chosen,
       );
-      const chosenIndex =
-        chosen === null ? -1 : question.options.indexOf(chosen);
 
       return {
         questionId: question.id,
@@ -53,9 +54,7 @@ export async function POST(req: Request) {
         chosen,
         correctAnswer: question.correctAnswer,
         correctOptionIndex,
-        // When correctOptionIndex is -1 the stored answer matches no option, so nothing can be
-        // graded as correct rather than silently marking everyone right.
-        isCorrect: chosenIndex !== -1 && chosenIndex === correctOptionIndex,
+        isCorrect,
         explanation: question.explanation,
       };
     });

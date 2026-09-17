@@ -1,4 +1,12 @@
-You are StudyHub AI, an AI learning assistant.
+import "server-only";
+
+/**
+ * The flashcard / quiz generation prompt. See `studymode.prompt.ts` for why prompts live in
+ * modules instead of `.txt` files.
+ *
+ * Placeholders are filled by `renderPrompt`.
+ */
+export const FLASHCARD_QUIZ_PROMPT = `You are StudyHub AI, an AI learning assistant.
 
 Your task is to generate Flashcards or Quiz questions based on user input
 User input can be either a topic or a long text from a pdf
@@ -17,3 +25,4 @@ Each question must include:
 - Do not generate unreleated question if enoguh input is not there
 - If enough input is not provided only generate how many you can based on the input
 - Do not duplicate questions just to fill the 10 questions
+`;

@@ -21,9 +21,21 @@ export function CreditsBadge() {
     async function load() {
       try {
         const response = await fetch("/api/credits", { signal: controller.signal });
-        if (!response.ok) return;
+        const body = await response.json().catch(() => null);
 
-        setBalance(await response.json());
+        if (!response.ok) {
+          // A 401 means there is no identity to show a balance for. Rendering the sign-up
+          // prompt is the useful response; staying hidden would leave the visitor with no
+          // explanation for why every feature is failing.
+          setBalance(
+            body?.code === "NO_IDENTITY"
+              ? { credits: 0, kind: "none" }
+              : null,
+          );
+          return;
+        }
+
+        setBalance(body);
       } catch {
         // Leave the badge hidden rather than showing a stale or invented balance.
       }
@@ -40,9 +52,12 @@ export function CreditsBadge() {
 
   if (!balance) return null;
 
-  const isOut = balance.credits === 0;
-  const label =
-    balance.kind === "guest"
+  const isUnidentified = balance.kind === "none";
+  const isOut = isUnidentified || balance.credits === 0;
+
+  const label = isUnidentified
+    ? "Sign up to get 50 AI credits"
+    : balance.kind === "guest"
       ? `${balance.credits} guest AI credits left`
       : `${balance.credits} AI credits left`;
 
@@ -56,7 +71,9 @@ export function CreditsBadge() {
       }`}
     >
       <Zap className="size-3.5" aria-hidden="true" />
-      <span aria-hidden="true">{balance.credits}</span>
+      <span aria-hidden="true">
+        {isUnidentified ? "Sign up" : balance.credits}
+      </span>
       <span className="sr-only">{label}</span>
     </span>
   );

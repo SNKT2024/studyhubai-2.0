@@ -20,7 +20,6 @@ export type QuestionSet = {
 
 export type Flashcard = {
   id: string;
-  deckId: string;
   order: number;
   front: string;
   back: string;
@@ -30,7 +29,6 @@ export type Flashcard = {
 
 export type FlashcardDeck = {
   id: string;
-  userId: string;
   title: string;
   topic: string;
   sourceType: string;
@@ -40,19 +38,22 @@ export type FlashcardDeck = {
   cards: Flashcard[];
 };
 
+/**
+ * A quiz question as the client sees it *before* an attempt is submitted. `correctAnswer` and
+ * `explanation` are absent by construction — the API never sends them — so a caller cannot read
+ * the answers out of the network response. Grading before submission goes through
+ * `POST /api/flash-quiz-mode/check`, which returns just the one answer being asked about.
+ */
 export type QuizQuestion = {
   id: string;
   quizId: string;
   order: number;
   question: string;
   options: string[];
-  correctAnswer: string;
-  explanation: string | null;
 };
 
 export type Quiz = {
   id: string;
-  userId: string;
   deckId: string | null;
   title: string;
   topic: string;
@@ -61,6 +62,15 @@ export type Quiz = {
   createdAt?: string;
   updatedAt?: string;
   questions: QuizQuestion[];
+};
+
+/** What `POST /api/flash-quiz-mode/check` returns for a single answered question. */
+export type QuizQuestionCheck = {
+  isCorrect: boolean;
+  /** Index into the question's `options`, or -1 when the stored answer matches none. */
+  correctOptionIndex: number;
+  correctAnswer: string;
+  explanation: string | null;
 };
 
 /** One graded question, as returned by the attempt endpoint for the results screen. */

@@ -61,17 +61,32 @@ model User {
   @@map("user")
 }
 
-/// One row per spent credit, so usage can be audited. The balance itself lives on User.credits.
+/// One row per credit movement, so usage can be audited. The balance itself lives on
+/// User.credits. A refund is a compensating row with `cost: -1`, which keeps `SUM(cost)` equal
+/// to the credits actually spent.
 model CreditLedger {
   id        String   @id @default(cuid())
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId    String
   feature   String // 'study-chat' | 'study-message' | 'question-set' | 'flash-quiz'
-  cost      Int      @default(1)
+  cost      Int      @default(1) // 1 for a spend, -1 for a refund
+  reason    String? // set on a refund ('generation-failed', ...), null on a normal spend
   createdAt DateTime @default(now())
 
   @@index([userId, createdAt])
   @@map("creditledger")
+}
+
+/// Fixed-window counters for abuse control, keyed by whatever the caller is limited on
+/// (client IP, or user id). Rows are disposable, so expired ones are swept opportunistically
+/// by lib/rate-limit.ts rather than kept for audit.
+model RateLimit {
+  key       String   @id // e.g. "guest-issue:203.0.113.5"
+  count     Int      @default(0)
+  expiresAt DateTime
+
+  @@index([expiresAt])
+  @@map("ratelimit")
 }
 
 // Contextual Study Model
