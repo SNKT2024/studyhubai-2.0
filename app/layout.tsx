@@ -8,7 +8,7 @@ import { Toaster } from "@/components/ui/toast";
 export const metadata: Metadata = {
   // Resolves relative URLs in openGraph/images. Without it Next warns and falls back to localhost.
   metadataBase: new URL(
-    process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000",
+    process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000",
   ),
   title: {
     default: "StudyHub AI",
